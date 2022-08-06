@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import requests
 
 from repository.Repository import GenericRepository
+from service.LoadInfo import load_fiis_info
 
 generic_repository = GenericRepository()
 
@@ -31,15 +32,26 @@ def attFiis(fiis):
             pass
 
 
+def get_fiis():
+    load_fiis = load_fiis_info()
+    values_fiis = {}
+    for fii in load_fiis:
+        values_fiis[fii['ticker']] = fii['price']
+
+    fiis = generic_repository.get_fiis()
+    for fii in fiis:
+        fii['price'] = values_fiis[fii['ticker']]
+        att_price(fii)
+    return fiis
+
+
 def calcRanks(fiis):
     df = pd.DataFrame.from_dict(fiis)
     df['rank_dy'] = df['desv_dy'].rank(ascending=False)
     df['rank_pvp'] = df['p_vp'].rank(ascending=True)
     df['rank_desv_dy'] = df['desv_dy'].rank(ascending=True)
 
-    js = json.loads(df.to_json(orient="records"))
-    print(js)
-    return js
+    return json.loads(df.to_json(orient="records"))
 
 
 def getAllValuesFiis(soup, fii):
@@ -48,7 +60,7 @@ def getAllValuesFiis(soup, fii):
         fii = generic_repository.get_fii(fii)
         try:
             time = datetime.now().timestamp() * 1000 - fii['last_update'].timestamp() * 1000
-            queue = time > (1000 * 60 * 60 * 24)
+            queue = time > (1000 * 60 * 60 * 12)
         except Exception as e:
             queue = True
         if queue:
@@ -58,6 +70,13 @@ def getAllValuesFiis(soup, fii):
         print("Erro ao escrever dados do fii: " + ticker)
 
 
+def att_price(fii):
+    generic_repository.execute_query(
+        f"update fiis "
+        f"SET last_update = now(),"
+        f"  price = {fii['price']} "
+        f"where ticker='{fii['ticker']}'"
+    )
 def write_fii(fii):
     for key, value in fii.items():
         if value is None:
@@ -144,10 +163,16 @@ def getValuesMoneyFiis(soup, fii):
             values.append(float(td__text.replace(".", "").replace(",", ".")))
         except IndexError:
             pass
-    f = stdev(values)
-    mean1 = mean(values)
-    fii["desv_dy"] = f / mean1
-
+        except ValueError:
+            td__text = td[3].find_all("div")[0].text
+            values.append(float(td__text.replace(".", "").replace(",", ".")))
+            pass
+    try:
+        f = stdev(values)
+        mean1 = mean(values)
+        fii["desv_dy"] = f / mean1
+    except:
+        fii["desv_dy"] = 0
     fii["segment"] = soup.find_all(text="Segmento ANBIMA")[0].parent.parent.find_all("strong")[0].text
 
     return fii

@@ -42,3 +42,32 @@ class GenericRepository(Interceptor):
                 i += 1
         cursor.close()
         return fii
+
+    def get_fiis(self):
+        keys = ['ticker', 'price', 'dy', 'lastdividend', 'p_vp', 'segment']
+        ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
+        select_ = f"select " \
+                  f"    {ks} " \
+                  f"from " \
+                  f"    fiis " \
+                  f"where " \
+                  f"    dy > 0 " \
+                  f"    and rank_pvp > 0  " \
+                  f"    and rank_dy > 0  " \
+                  f"    and rank_desv_dy > 0  " \
+                  f"    and liquidezmediadiaria > 500000 " \
+                  f"order by " \
+                  f"    rank_desv_dy + rank_dy + rank_pvp"
+        cursor, cursor_ = self.execute_select(select_)
+        fiis = []
+        for row in cursor_:
+            i = 0
+            fii = {}
+            for key in keys:
+                fii[key] = row[i]
+                i += 1
+            fii['url_fundamentos'] = f"https://www.fundamentus.com.br/detalhes.php?papel={fii['ticker']}"
+            fii['url_statusinvest'] = f"https://statusinvest.com.br/fundos-imobiliarios/{fii['ticker']}"
+            fiis.append(fii)
+        cursor.close()
+        return fiis
