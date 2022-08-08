@@ -11,7 +11,7 @@ from flask_cors import CORS, cross_origin
 
 from prometheus_flask_exporter import PrometheusMetrics
 
-from service.FiiHandller import attFiis, get_fiis
+from service.FiiHandler import FiiHandler
 from service.LoadInfo import load_fiis_info
 
 app = Flask(__name__)
@@ -26,6 +26,8 @@ conn = psycopg2.connect(
     user="postgres",
     password="postgres")
 
+fii_handler = FiiHandler()
+
 
 class Encoder(json.JSONEncoder):
     def default(self, obj):
@@ -34,14 +36,14 @@ class Encoder(json.JSONEncoder):
 
 @app.route('/atualiza-fiis', methods=['POST'])
 def hello_world():  # put application's code here
-    attFiis(load_fiis_info())
+    fii_handler.att_fiis(load_fiis_info())
     return 'Hello World!'
 
 
 @app.route('/fiis', methods=['GET'])
 @cross_origin()
 def get_fiis_list():
-    fiis = get_fiis()
+    fiis = fii_handler.get_fiis()
     return json.dumps(fiis, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
