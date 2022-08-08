@@ -34,7 +34,7 @@ class Encoder(json.JSONEncoder):
         if isinstance(obj, decimal.Decimal): return float(obj)
 
 
-@app.route('/atualiza-fiis', methods=['POST'])
+@app.route('/att-fiis', methods=['POST'])
 def hello_world():  # put application's code here
     fii_handler.att_fiis(load_fiis_info())
     return 'Hello World!'
