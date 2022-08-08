@@ -20,11 +20,11 @@ class Interceptor:
             return attr
 
     def send_logs(self, className, methodName, start):
-        # execution_time = int(time.time() * 1000 - start)
-        # clazz = className[className.rfind('.') + 1:className.__len__()]
-        # metrics = {'clazz': clazz, 'method': methodName, 'executionTime': execution_time,
-        #            'appName': 'CscTrackerDataSource', 'fullClassName': className}
-        #
-        # response = requests.post('http://metrics-service:5060/metric', json=metrics)
-        # print(metrics, response.status_code)
+        execution_time = int(time.time() * 1000 - start)
+        clazz = className[className.rfind('.') + 1:className.__len__()]
+        metrics = {'clazz': clazz, 'method': methodName, 'executionTime': execution_time,
+                   'appName': 'CscTrackerInvest', 'fullClassName': className}
+
+        response = requests.post('http://metrics-service:5000/metric', json=metrics)
+        print(metrics, response.status_code)
         pass
