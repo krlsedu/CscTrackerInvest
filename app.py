@@ -6,12 +6,13 @@ import decimal
 import json
 
 import psycopg2
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS, cross_origin
 
 from prometheus_flask_exporter import PrometheusMetrics
 
 from service.FiiHandler import FiiHandler
+from service.InvestmentHandler import InvestmentHandler
 from service.LoadInfo import load_fiis_info
 
 app = Flask(__name__)
@@ -27,6 +28,7 @@ conn = psycopg2.connect(
     password="postgres")
 
 fii_handler = FiiHandler()
+investment_handler = InvestmentHandler()
 
 
 class Encoder(json.JSONEncoder):
@@ -45,6 +47,13 @@ def hello_world():  # put application's code here
 def get_fiis_list():
     fiis = fii_handler.get_fiis()
     return json.dumps(fiis, cls=Encoder), 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/investment-movement', methods=['POST'])
+@cross_origin()
+def add_movement():
+    investment_handler.add_movement(request.get_json())
+    return "{}", 200, {'Content-Type': 'application/json'}
 
 
 if __name__ == '__main__':

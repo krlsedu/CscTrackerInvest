@@ -5,6 +5,7 @@ from statistics import stdev, mean
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests
+from flask import request
 
 from repository.Repository import GenericRepository
 from service.Interceptor import Interceptor
@@ -42,7 +43,12 @@ class FiiHandler(Interceptor):
         for fii in load_fiis:
             values_fiis[fii['ticker']] = fii['price']
 
-        fiis = generic_repository.get_fiis()
+        liquidez = request.args.get('metric')
+        if liquidez is None:
+            liquidez = 500000
+        else:
+            liquidez = float(liquidez)
+        fiis = generic_repository.get_fiis(liquidez)
         for fii in fiis:
             fii['price'] = values_fiis[fii['ticker']]
             self.att_price(fii)
