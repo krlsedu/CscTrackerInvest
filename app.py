@@ -11,6 +11,7 @@ from flask_cors import CORS, cross_origin
 
 from prometheus_flask_exporter import PrometheusMetrics
 
+from service.AttStocks import AttStocks
 from service.FiiHandler import FiiHandler
 from service.InvestmentHandler import InvestmentHandler
 from service.LoadInfo import load_fiis_info
@@ -29,12 +30,19 @@ conn = psycopg2.connect(
 
 fii_handler = FiiHandler()
 investment_handler = InvestmentHandler()
+att_stocks = AttStocks()
 
 
 class Encoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, decimal.Decimal): return float(obj)
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
 
+
+@app.route('/att-all', methods=['POST'])
+def att_all():  # put application's code here
+    att_stocks.att_all()
+    return "{}", 200, {'Content-Type': 'application/json'}
 
 @app.route('/att-fiis', methods=['POST'])
 def hello_world():  # put application's code here
@@ -52,8 +60,13 @@ def get_fiis_list():
 @app.route('/investment-movement', methods=['POST'])
 @cross_origin()
 def add_movement():
-    investment_handler.add_movement(request.get_json())
-    return "{}", 200, {'Content-Type': 'application/json'}
+    return json.dumps(investment_handler.add_movement(request.get_json())), 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/investment-movements', methods=['POST'])
+@cross_origin()
+def add_movements():
+    return json.dumps(investment_handler.add_movements(request.get_json())), 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/investments', methods=['GET'])

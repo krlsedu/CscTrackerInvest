@@ -27,7 +27,6 @@ class GenericRepository(Interceptor):
         cursor.close()
         return fii
 
-
     def execute_select(self, select_):
         cursor = self.conn.cursor()
         cursor.execute(select_)
@@ -121,10 +120,13 @@ class GenericRepository(Interceptor):
         for i in range(keys.__len__()):
             i_ = values[i]
             tp_ = type(i_)
-            if tp_ == str or tp_ == datetime.datetime:
-                update_ += f"{keys[i]}='{i_}'"
+            if i_ is not None:
+                if tp_ == str or tp_ == datetime.datetime:
+                    update_ += f"{keys[i]}='{i_}'"
+                else:
+                    update_ += f"{keys[i]}={i_}"
             else:
-                update_ += f"{keys[i]}={i_}"
+                update_ += f"{keys[i]}=null"
             if i < keys.__len__() - 1:
                 update_ += ", "
         update_ += f" where "
@@ -132,15 +134,7 @@ class GenericRepository(Interceptor):
         self.execute_query(update_)
 
     def get_object(self, table, keys=[], data={}, object_=None):
-        if object_ is None:
-            ks = "*"
-        else:
-            ks = object_.__dict__.keys()
-            ks = str(ks).replace("[", "").replace("]", "")
-        select_ = f"select {ks} from {table} where "
-        select_ = self.wheres(data, keys, select_)
-        cursor, cursor_ = self.execute_select(select_)
-        col_names = cursor.description
+        col_names, cursor, cursor_ = self.col_names(data, keys, object_, table)
         obj = {}
         for row in cursor_:
             i = 0
@@ -151,15 +145,7 @@ class GenericRepository(Interceptor):
             return obj
 
     def get_objects(self, table, keys=[], data={}, object_=None):
-        if object_ is None:
-            ks = "*"
-        else:
-            ks = object_.__dict__.keys()
-            ks = str(ks).replace("[", "").replace("]", "")
-        select_ = f"select {ks} from {table} where "
-        select_ = self.wheres(data, keys, select_)
-        cursor, cursor_ = self.execute_select(select_)
-        col_names = cursor.description
+        col_names, cursor, cursor_ = self.col_names(data, keys, object_, table)
         objects = []
         for row in cursor_:
             obj = {}
@@ -170,6 +156,24 @@ class GenericRepository(Interceptor):
             objects.append(obj)
         cursor.close()
         return objects
+
+    def col_names(self, data, keys, object_, table):
+        if object_ is None:
+            ks = "*"
+        else:
+            ks = object_.__dict__.keys()
+            cols = []
+            for k in ks:
+                cols.append(k)
+            ks = str(cols).replace("[", "").replace("]", "").replace("'", "")
+        if keys.__len__() > 0:
+            select_ = f"select {ks} from {table} where "
+            select_ = self.wheres(data, keys, select_)
+        else:
+            select_ = f"select {ks} from {table}"
+        cursor, cursor_ = self.execute_select(select_)
+        col_names = cursor.description
+        return col_names, cursor, cursor_
 
     def add_user_id(self, data):
         user = self.get_user()
