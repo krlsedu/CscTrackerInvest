@@ -56,5 +56,13 @@ def add_movement():
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/investments', methods=['GET'])
+@cross_origin()
+def get_investments():
+    consolidated = investment_handler.get_stocks_consolidated()
+    dumps = json.dumps(consolidated)
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

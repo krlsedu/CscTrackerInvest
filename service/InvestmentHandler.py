@@ -1,9 +1,14 @@
+import json
+
+import pandas as pd
+
 from model.UserStocks import UserStocks
 from repository.Repository import GenericRepository
+from service.FiiHandler import FiiHandler
 from service.Interceptor import Interceptor
 
 generic_repository = GenericRepository()
-
+fii_handler = FiiHandler()
 
 class InvestmentHandler(Interceptor):
     def __init__(self):
@@ -12,12 +17,25 @@ class InvestmentHandler(Interceptor):
     def add_movement(self, movement):
         movement = generic_repository.add_user_id(movement)
         movement_type = generic_repository.get_object("movement_types", ["id"], {"id": movement['movement_type']})
+        ticker_ = movement['ticker']
+        if ticker_ is not None:
+            investment_type = generic_repository.get_object("investment_types", ["ticker"], {"ticker": ticker_})
+            try:
+                id_ = investment_type['id']
+            except Exception as e:
+                id_ = None
+            if id_ is None:
+                investment_tp ={'ticker': ticker_, 'name': ticker_}
+                generic_repository.insert("investment_types", investment_tp)
+            investment_type = generic_repository.get_object("investment_types", ["ticker"], {"ticker": ticker_})
+            movement['investment_id'] = investment_type['id']
+            del movement['ticker']
         coef = movement_type['coefficient']
         try:
-            stock = {'ticker': movement['ticker'], 'quantity': movement['quantity'], 'avg_price': movement['price'],
-                     'user_id': movement['user_id']}
-            if generic_repository.exist_by_key("user_stocks", ["ticker"], movement):
-                user_stock = generic_repository.get_object("user_stocks", ["ticker"], movement)
+            stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
+                     'avg_price': movement['price'], 'user_id': movement['user_id']}
+            if generic_repository.exist_by_key("user_stocks", ["investment_id"], movement):
+                user_stock = generic_repository.get_object("user_stocks", ["investment_id"], movement)
                 total_value = float(user_stock['quantity'] * user_stock['avg_price'])
 
                 total_value += movement['quantity'] * movement['price'] * float(coef)
@@ -28,9 +46,37 @@ class InvestmentHandler(Interceptor):
                     avg_price = 0
                 user_stock['quantity'] = quantity
                 user_stock['avg_price'] = avg_price
-                generic_repository.update("user_stocks", ["user_id", "ticker"], user_stock)
+                generic_repository.update("user_stocks", ["user_id", "investment_id"], user_stock)
                 generic_repository.insert("user_stocks_movements", movement)
             else:
                 generic_repository.insert("user_stocks", stock)
+                generic_repository.insert("user_stocks_movements", movement)
         except Exception as e:
             print(e)
+
+    def get_stocks(self):
+        user_id = generic_repository.get_user()['id']
+        return generic_repository.get_objects("user_stocks", ["user_id"], {"user_id": user_id})
+
+    def get_stocks_consolidated(self):
+        stocks = self.get_stocks()
+        stocks_consolidated = []
+        for stock in stocks:
+            stock_consolidated = {}
+            investment_type = generic_repository.get_object("investment_types", ["id"], {"id": stock['investment_id']})
+            ticker_ = investment_type['ticker']
+            fii = fii_handler.get_fii({'ticker': ticker_})
+            try:
+                stock_consolidated['price_atu'] = fii['price']
+            except Exception as e:
+                pass
+            stock_consolidated['ticker'] = ticker_
+            stock_consolidated['quantity'] = stock['quantity']
+            stock_consolidated['avg_price'] = stock['avg_price']
+            stock_consolidated['total_value'] = stock['quantity'] * stock['avg_price']
+            stocks_consolidated.append(stock_consolidated)
+
+        df = pd.DataFrame.from_dict(stocks_consolidated)
+        value__sum = df['total_value'].sum()
+        df['perc'] = (df['total_value'] / value__sum) * 100
+        return json.loads(df.to_json(orient="records"))

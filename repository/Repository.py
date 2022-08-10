@@ -30,19 +30,6 @@ class GenericRepository(Interceptor):
         select_ = f"select * from fiis where ticker='{fii['ticker']}'"
         return self.exist(select_)
 
-    def get_fii(self, fii):
-        keys = ['last_update', 'desv_dy', 'segment']
-        ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
-        select_ = f"select {ks} from fiis where ticker='{fii['ticker']}'"
-        cursor, cursor_ = self.execute_select(select_)
-        for row in cursor_:
-            i = 0
-            for key in keys:
-                fii[key] = row[i]
-                i += 1
-        cursor.close()
-        return fii
-
     def get_fiis(self, liquidez):
         keys = ['ticker', 'price', 'dy', 'lastdividend', 'p_vp', 'segment']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
@@ -149,8 +136,33 @@ class GenericRepository(Interceptor):
             cursor.close()
             return obj
 
+    def get_objects(self, table, keys=[], data={}, object_=None):
+        if object_ is None:
+            ks = "*"
+        else:
+            ks = object_.__dict__.keys()
+            ks = str(ks).replace("[", "").replace("]", "")
+        select_ = f"select {ks} from {table} where "
+        select_ = self.wheres(data, keys, select_)
+        cursor, cursor_ = self.execute_select(select_)
+        col_names = cursor.description
+        objects = []
+        for row in cursor_:
+            obj = {}
+            i = 0
+            for col_name in col_names:
+                obj[col_name[0]] = row[i]
+                i += 1
+            objects.append(obj)
+        cursor.close()
+        return objects
+
     def add_user_id(self, data):
-        user_name = request.headers.get('userName')
-        user = self.get_object('users', ['email'], {'email': user_name})
+        user = self.get_user()
         data['user_id'] = user['id']
         return data
+
+    def get_user(self):
+        user_name = request.headers.get('userName')
+        user = self.get_object('users', ['email'], {'email': user_name})
+        return user

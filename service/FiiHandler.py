@@ -77,6 +77,24 @@ class FiiHandler(Interceptor):
             print(e)
             print("Erro ao escrever dados do fii: " + ticker)
 
+    def get_fii(self, fii):
+        fii = generic_repository.get_object("fiis", ["ticker"], fii)
+        try:
+            time = datetime.now().timestamp() * 1000 - fii['last_update'].timestamp() * 1000
+            queue = time > (1000 * 60 * 60 * 12)
+        except Exception as e:
+            queue = True
+        if queue:
+            try:
+                ticker = fii['ticker']
+                url = requests.get(
+                    f"https://statusinvest.com.br/fundos-imobiliarios/{ticker}")
+                nav = BeautifulSoup(url.text, "html5lib")
+                self.get_values_money_fiis(nav, fii)
+            except Exception as e:
+                pass
+        return fii
+
     def att_price(self, fii):
         generic_repository.execute_query(
             f"update fiis "
@@ -181,5 +199,7 @@ class FiiHandler(Interceptor):
         except:
             fii["desv_dy"] = 0
         fii["segment"] = soup.find_all(text="Segmento ANBIMA")[0].parent.parent.find_all("strong")[0].text
+        fii["price"] = soup.find_all(title="Valor atual do ativo")[0].parent.parent.find_all("strong")[0].text \
+            .replace(".", "").replace(",", ".")
 
         return fii
