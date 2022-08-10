@@ -10,6 +10,7 @@ from service.Interceptor import Interceptor
 generic_repository = GenericRepository()
 fii_handler = FiiHandler()
 
+
 class InvestmentHandler(Interceptor):
     def __init__(self):
         super().__init__()
@@ -25,7 +26,7 @@ class InvestmentHandler(Interceptor):
             except Exception as e:
                 id_ = None
             if id_ is None:
-                investment_tp ={'ticker': ticker_, 'name': ticker_}
+                investment_tp = {'ticker': ticker_, 'name': ticker_}
                 generic_repository.insert("investment_types", investment_tp)
             investment_type = generic_repository.get_object("investment_types", ["ticker"], {"ticker": ticker_})
             movement['investment_id'] = investment_type['id']
@@ -60,23 +61,30 @@ class InvestmentHandler(Interceptor):
 
     def get_stocks_consolidated(self):
         stocks = self.get_stocks()
-        stocks_consolidated = []
-        for stock in stocks:
-            stock_consolidated = {}
-            investment_type = generic_repository.get_object("investment_types", ["id"], {"id": stock['investment_id']})
-            ticker_ = investment_type['ticker']
-            fii = fii_handler.get_fii({'ticker': ticker_})
-            try:
-                stock_consolidated['price_atu'] = fii['price']
-            except Exception as e:
-                pass
-            stock_consolidated['ticker'] = ticker_
-            stock_consolidated['quantity'] = stock['quantity']
-            stock_consolidated['avg_price'] = stock['avg_price']
-            stock_consolidated['total_value'] = stock['quantity'] * stock['avg_price']
-            stocks_consolidated.append(stock_consolidated)
+        if stocks.__len__() > 0:
+            stocks_consolidated = []
+            for stock in stocks:
+                stock_consolidated = {}
+                investment_type = generic_repository.get_object("investment_types", ["id"],
+                                                                {"id": stock['investment_id']})
+                ticker_ = investment_type['ticker']
+                fii = fii_handler.get_fii({'ticker': ticker_})
+                try:
+                    stock_consolidated['price_atu'] = float(fii['price'])
+                except Exception as e:
+                    pass
+                stock_consolidated['ticker'] = ticker_
+                stock_consolidated['quantity'] = stock['quantity']
+                stock_consolidated['avg_price'] = stock['avg_price']
+                stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
+                stock_consolidated['total_value_atu'] = float(stock['quantity']) * stock_consolidated['price_atu']
+                stocks_consolidated.append(stock_consolidated)
 
-        df = pd.DataFrame.from_dict(stocks_consolidated)
-        value__sum = df['total_value'].sum()
-        df['perc'] = (df['total_value'] / value__sum) * 100
-        return json.loads(df.to_json(orient="records"))
+            df = pd.DataFrame.from_dict(stocks_consolidated)
+            value_invest_sum = df['total_value_invest'].sum()
+            value_atu_sum = df['total_value_atu'].sum()
+            df['perc_invest'] = (df['total_value_invest'] / value_invest_sum) * 100
+            df['perc_atu'] = (df['total_value_atu'] / value_atu_sum) * 100
+            return json.loads(df.to_json(orient="records"))
+        else:
+            return []
