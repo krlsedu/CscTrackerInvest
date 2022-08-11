@@ -45,7 +45,7 @@ class AttStocks(Interceptor):
             company_ = company_.replace('/bdrs/', '')
             print(f"Atualizando BDR: {company_}")
             stock_ = investment_handler.get_stock(company_)
-            stock_, investment_type = http_repository.get_values_by_ticker(stock_, )
+            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return bdrs
 
