@@ -29,10 +29,10 @@ class HttpRepository(Interceptor):
     def get_values_by_ticker(self, stock, force=False):
         try:
             time = datetime.now().timestamp() * 1000 - stock['last_update'].timestamp() * 1000
-            queue = time > (1000 * 60 * 60 * 12) or time < 0 or force
+            queue = time > (1000 * 60 * 60 * 12) or time < 0
         except Exception as e:
             queue = True
-        if queue:
+        if queue or force:
             try:
                 text = self.get_page_text(stock['ticker'])
                 soup = BeautifulSoup(text, "html5lib")
