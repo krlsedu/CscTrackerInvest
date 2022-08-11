@@ -44,18 +44,19 @@ class GenericRepository(Interceptor):
         return self.exist(select_)
 
     def get_fiis(self, liquidez):
-        keys = ['ticker', 'price', 'dy', 'lastdividend', 'p_vp', 'segment']
+        keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
         select_ = f"select " \
                   f"    {ks} " \
                   f"from " \
-                  f"    fiis " \
+                  f"    stocks " \
                   f"where " \
                   f"    dy > 0 " \
+                  f"    and investment_type_id = 2  " \
                   f"    and rank_pvp > 0  " \
                   f"    and rank_dy > 0  " \
                   f"    and rank_desv_dy > 0  " \
-                  f"    and liquidezmediadiaria > {liquidez} " \
+                  f"    and avg_liquidity > {liquidez} " \
                   f"order by " \
                   f"    rank_desv_dy + rank_dy + rank_pvp"
         cursor, cursor_ = self.execute_select(select_)
