@@ -60,6 +60,7 @@ class InvestmentHandler(Interceptor):
             return {"status": "error", "message": e}
 
     def get_stock(self, ticker_):
+        ticker_ = ticker_.upper()
         stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker_})
         try:
             stock['id']

@@ -15,6 +15,7 @@ from service.AttStocks import AttStocks
 from service.FiiHandler import FiiHandler
 from service.InvestmentHandler import InvestmentHandler
 from service.LoadInfo import load_fiis_info
+from service.StocksHandler import StocksHandler
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -31,6 +32,7 @@ conn = psycopg2.connect(
 fii_handler = FiiHandler()
 investment_handler = InvestmentHandler()
 att_stocks = AttStocks()
+stocks_handler = StocksHandler()
 
 
 class Encoder(json.JSONEncoder):
@@ -44,6 +46,7 @@ def att_all():  # put application's code here
     att_stocks.att_all()
     return "{}", 200, {'Content-Type': 'application/json'}
 
+
 @app.route('/att-fiis', methods=['POST'])
 def hello_world():  # put application's code here
     fii_handler.att_fiis(load_fiis_info())
@@ -55,6 +58,20 @@ def hello_world():  # put application's code here
 def get_fiis_list():
     fiis = fii_handler.get_fiis()
     return json.dumps(fiis, cls=Encoder), 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/stocks-br', methods=['GET'])
+@cross_origin()
+def get_stocks_br():
+    stocks = stocks_handler.get_stocks(1)
+    return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/bdrs', methods=['GET'])
+@cross_origin()
+def get_bdrs():
+    stocks = stocks_handler.get_stocks(4)
+    return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/investment-movement', methods=['POST'])

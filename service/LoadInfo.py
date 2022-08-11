@@ -44,3 +44,9 @@ def load_acoes_info():
         "%2C%22Item2%22%3Anull%7D%2C%22valorMercado%22%3A%7B%22Item1%22%3Anull%2C%22Item2%22%3Anull%7D%7D"
         "&CategoryType=1")
     return acoes_response.json()
+
+
+def load_bdr_info():
+    acoes_response = requests.get(
+        "https://statusinvest.com.br/bdr/companiesnavigation?page=1&size=10000")
+    return acoes_response.json()

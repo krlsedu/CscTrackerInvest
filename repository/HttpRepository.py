@@ -29,7 +29,7 @@ class HttpRepository(Interceptor):
     def get_values_by_ticker(self, stock, force=False):
         try:
             time = datetime.now().timestamp() * 1000 - stock['last_update'].timestamp() * 1000
-            queue = time > (1000 * 60 * 60) or time < 0 or force
+            queue = time > (1000 * 60 * 60 * 12) or time < 0 or force
         except Exception as e:
             queue = True
         if queue:
