@@ -26,10 +26,10 @@ class HttpRepository(Interceptor):
         page = requests.get(f"https://statusinvest.com.br{stock['url_infos']}")
         return page.text
 
-    def get_values_by_ticker(self, stock):
+    def get_values_by_ticker(self, stock, force=False):
         try:
             time = datetime.now().timestamp() * 1000 - stock['last_update'].timestamp() * 1000
-            queue = time > (1000 * 60 * 600) or time < 0
+            queue = time > (1000 * 60 * 60) or time < 0 or force
         except Exception as e:
             queue = True
         if queue:

@@ -23,7 +23,7 @@ class AttStocks(Interceptor):
         for acao in acoes:
             print(f"Atualizando a acao: {acao['ticker']}")
             stock_ = investment_handler.get_stock(acao['ticker'])
-            stock_, investment_type = http_repository.get_values_by_ticker(stock_)
+            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return acoes
 
@@ -32,6 +32,6 @@ class AttStocks(Interceptor):
         for fii in fiis:
             print(f"Atualizando o fundo: {fii['ticker']}")
             stock_ = investment_handler.get_stock(fii['ticker'])
-            stock_, investment_type = http_repository.get_values_by_ticker(stock_)
+            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fiis
