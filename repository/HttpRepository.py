@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from statistics import stdev, mean
 
@@ -29,7 +30,7 @@ class HttpRepository(Interceptor):
     def get_values_by_ticker(self, stock, force=False):
         try:
             time = datetime.now().timestamp() * 1000 - stock['last_update'].timestamp() * 1000
-            queue = time > (1000 * 60 * 60 * 12) or time < 0
+            queue = time > (1000 * 60 * 15) or time < 0
         except Exception as e:
             queue = True
         if queue or force:
@@ -73,42 +74,42 @@ class HttpRepository(Interceptor):
             stock["desv_dy"] = 0
 
         try:
-            stock["segment"] = soup.find_all(text="Segmento ANBIMA")[0].parent.parent.find_all("strong")[0].text
+            stock["segment"] = self.find_value(soup, "Segmento", "text", 2, 0)
         except:
             stock["segment"] = soup.find_all(text="Segmento de Atuação")[0].parent.parent.find_all("strong")[0].text
 
         try:
-            price_text = soup.find_all(title="Valor atual do ativo")[0].parent.parent.find_all("strong")[0].text
+            price_text = self.find_value(soup, "Valor atual do ativo", "title", 2, 0)
         except:
-            price_text = soup.find_all(title="Valor atual")[0].parent.parent.find_all("strong")[0].text
+            price_text = self.find_value(soup, "Valor atual", "title", 2, 0)
         stock["price"] = float(price_text.replace(".", "").replace(",", "."))
 
         try:
-            dy_txt = soup.find_all(title="Dividend Yield com base nos últimos 12 meses")[0].parent.find_all("strong")[0].text
+            dy_txt = self.find_value(soup, "Dividend Yield com base nos últimos 12 meses", "title", 1, 0)
             stock["dy"] = float(dy_txt.replace(".", "").replace(",", "."))
         except Exception as e:
             stock["dy"] = 0
 
         try:
-            txt = soup.find_all(text="P/L")[0].parent.parent.parent.find_all("strong")[0].text
+            txt = self.find_value(soup, "P/L", "text", 3, 0)
             stock["pl"] = float(txt.replace(".", "").replace(",", "."))
         except Exception as e:
             stock["pl"] = 0
 
         try:
-            txt = soup.find_all(text="P/VP")[0].parent.parent.parent.find_all("strong")[0].text
+            txt = self.find_value(soup, "P/VP", "text", 3, 0)
             stock["pvp"] = float(txt.replace(".", "").replace(",", "."))
         except Exception as e:
             stock["pvp"] = 0
 
         try:
-            txt = soup.find_all(text="Liquidez média diária")[0].parent.parent.parent.find_all("strong")[0].text
+            txt = self.find_value(soup, "Liquidez média diária", "text", 3, 0)
             stock["avg_liquidity"] = float(txt.replace(".", "").replace(",", "."))
         except Exception as e:
             stock["avg_liquidity"] = 0
 
         try:
-            txt = soup.find_all(text="Último rendimento")[0].parent.parent.parent.find_all("strong")[0].text
+            txt = self.find_value(soup, "Último rendimento", "text", 3, 0)
             stock["last_dividend"] = float(txt.replace(".", "").replace(",", "."))
         except Exception as e:
             if last_dy is not None:
@@ -116,5 +117,37 @@ class HttpRepository(Interceptor):
             else:
                 stock["last_dividend"] = 0
             pass
+        #
+        # try:
+        #     txt = self.find_value(soup, "earning-section", "id", 0, 0, "input", "value")
+        #     txt = json.loads(txt)
+        # #     company-relateds
+        # except Exception as e:
+        #     pass
 
         return stock
+
+    def find_value(self, soup, text, type, parents=0, children=None, child_Type="strong", value="text"):
+        if type == "text":
+            obj = soup.find_all(text=f"{text}")
+        elif type == "class":
+            obj = soup.find_all(class_=f"{text}")
+        elif type == "title":
+            obj = soup.find_all(title=f"{text}")
+        elif type == "id":
+            obj = soup.find_all(id=f"{text}")
+        else:
+            obj = soup.find_all(tag=f"{text}")
+
+        if children is None:
+            return obj
+        else:
+            obj = obj[children]
+
+        for i in range(parents):
+            obj = obj.parent
+        if value == "text":
+            strong__text = obj.find_all(child_Type)[0].text
+        else:
+            strong__text = obj.find_all(child_Type)[0][value]
+        return strong__text

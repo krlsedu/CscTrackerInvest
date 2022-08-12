@@ -44,7 +44,7 @@ class GenericRepository(Interceptor):
         return self.exist(select_)
 
     def get_fiis(self, liquidez):
-        keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'name']
+        keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'name', 'investment_type_id']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
         select_ = f"select " \
                   f"    {ks} " \
@@ -146,6 +146,7 @@ class GenericRepository(Interceptor):
             return obj
 
     def get_objects(self, table, keys=[], data={}, object_=None):
+        self.check_sql_injection(table, keys, data)
         col_names, cursor, cursor_ = self.col_names(data, keys, object_, table)
         objects = []
         for row in cursor_:
@@ -175,6 +176,32 @@ class GenericRepository(Interceptor):
         cursor, cursor_ = self.execute_select(select_)
         col_names = cursor.description
         return col_names, cursor, cursor_
+
+    def check_sql_injection(self, table, keys, data):
+        select_ = f"select * from {table} limit 1"
+        cursor, cursor_ = self.execute_select(select_)
+        col_names = cursor.description
+        cols_valid = {}
+        for row__ in cursor_:
+            for col_name in col_names:
+                cols_valid[col_name[0]] = col_name[1]
+            cursor.close()
+            break
+        for key in keys:
+            if key in data:
+                kv_ = data[key]
+                if key not in cols_valid.keys():
+                    Exception(f"key {key} not found in table {table}")
+                tp_ = cols_valid[key]
+                if tp_ == 25 or tp_ == 1114:
+                    data[key] = kv_.replace("'", "''")
+                elif tp_ == 16:
+                    data[key] = bool(kv_)
+                else:
+                    data[key] = float(kv_)
+            else:
+                Exception(f"key {key} not found in data")
+        return data
 
     def add_user_id(self, data):
         user = self.get_user()

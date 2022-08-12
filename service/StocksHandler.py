@@ -16,7 +16,7 @@ class StocksHandler(Interceptor):
             liquidez = 500000
         else:
             liquidez = float(liquidez)
-        keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name']
+        keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name', 'investment_type_id']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
         select_ = f"select " \
                   f"    {ks} " \

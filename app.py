@@ -89,9 +89,13 @@ def add_movements():
 @app.route('/investments', methods=['GET'])
 @cross_origin()
 def get_investments():
-    consolidated = investment_handler.get_stocks_consolidated()
-    dumps = json.dumps(consolidated)
-    return dumps, 200, {'Content-Type': 'application/json'}
+    try:
+        consolidated = investment_handler.get_stocks_consolidated()
+        dumps = json.dumps(consolidated)
+        return dumps, 200, {'Content-Type': 'application/json'}
+    except Exception as e:
+        msg = {'error': str(e)}
+        return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
 if __name__ == '__main__':

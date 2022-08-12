@@ -1,6 +1,7 @@
 import json
 
 import pandas as pd
+from flask import request
 
 from model.UserStocks import UserStocks
 from repository.HttpRepository import HttpRepository
@@ -31,6 +32,7 @@ class InvestmentHandler(Interceptor):
         if ticker_ is not None:
             stock = self.get_stock(ticker_)
             movement['investment_id'] = stock['id']
+            movement['investment_type_id'] = stock['investment_type_id']
             del movement['ticker']
         try:
             if generic_repository.exist_by_key("user_stocks", ["investment_id"], movement):
@@ -51,7 +53,8 @@ class InvestmentHandler(Interceptor):
             else:
                 if movement_type['to_balance']:
                     stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
-                             'avg_price': movement['price'], 'user_id': movement['user_id']}
+                             'avg_price': movement['price'], 'user_id': movement['user_id'],
+                             'investment_type_id': movement['investment_type_id']}
                     generic_repository.insert("user_stocks", stock)
                 generic_repository.insert("user_stocks_movements", movement)
             return {"status": "success", "message": "Movement added"}
@@ -81,7 +84,13 @@ class InvestmentHandler(Interceptor):
 
     def get_stocks(self):
         user_id = generic_repository.get_user()['id']
-        return generic_repository.get_objects("user_stocks", ["user_id"], {"user_id": user_id})
+        args = request.args
+        filters = ["user_id"]
+        values = {"user_id": user_id}
+        for key in args:
+            filters.append(key)
+            values[key] = args[key]
+        return generic_repository.get_objects("user_stocks", filters, values)
 
     def get_stocks_consolidated(self):
         stocks = self.get_stocks()
@@ -99,6 +108,7 @@ class InvestmentHandler(Interceptor):
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_)
 
                 segment['type'] = investment_type['name']
+                segment['type_id'] = investment_type['id']
                 stock_consolidated['type'] = investment_type['name']
 
                 stock_consolidated['price_atu'] = stock_['price']
@@ -106,11 +116,15 @@ class InvestmentHandler(Interceptor):
                 segment['segment'] = stock_['segment']
 
                 stock_consolidated['ticker'] = ticker_
+                stock_consolidated['investment_type_id'] = investment_type['id']
+                stock_consolidated['name'] = stock_['name']
                 stock_consolidated['quantity'] = stock['quantity']
                 stock_consolidated['avg_price'] = stock['avg_price']
                 stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
                 stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
                                                         float(stock_consolidated['price_atu'])
+                stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
+                    stock_consolidated['total_value_invest']) - 1
                 stocks_consolidated.append(stock_consolidated)
 
                 segment['quantity'] = float(stock['quantity'])
@@ -127,10 +141,10 @@ class InvestmentHandler(Interceptor):
             }
 
             df_grouped_segment = self.group_data(df_grouped_segment, 'segment')
-            df_grouped_type = self.group_data(df_grouped_type, 'type')
+            df_grouped_type = self.group_data(df_grouped_type, ['type', 'type_id'])
             ret['segments_grouped'] = json.loads(df_grouped_segment.to_json(orient="table"))['data']
             ret['type_grouped'] = json.loads(df_grouped_type.to_json(orient="table"))['data']
-            self.att_stocks_ranks()
+            # self.att_stocks_ranks()
             return ret
         else:
             return []
