@@ -15,6 +15,11 @@ class AttStocks(Interceptor):
     def __init__(self):
         super().__init__()
 
+    def att_expres(self):
+        self.att_fiis()
+        self.att_acoes()
+        investment_handler.att_stocks_ranks()
+
     def att_all(self):
         tp = request.args.get('tp_invest')
         if tp is None:

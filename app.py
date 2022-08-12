@@ -47,6 +47,12 @@ def att_all():  # put application's code here
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/att-express', methods=['POST'])
+def att_all():  # put application's code here
+    att_stocks.att_expres()
+    return "{}", 200, {'Content-Type': 'application/json'}
+
+
 @app.route('/att-fiis', methods=['POST'])
 def hello_world():  # put application's code here
     fii_handler.att_fiis(load_fiis_info())
