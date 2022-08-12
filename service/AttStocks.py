@@ -28,6 +28,9 @@ class AttStocks(Interceptor):
             self.att_acoes()
         elif tp == 'bdr':
             self.att_bdr()
+        elif tp == 'express':
+            self.att_fiis()
+            self.att_acoes()
         investment_handler.att_stocks_ranks()
 
     def att_acoes(self, full=False):
