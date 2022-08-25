@@ -16,8 +16,11 @@ class AttStocks(Interceptor):
         super().__init__()
 
     def att_expres(self):
+        print("Atualizando fiis")
         self.att_fiis()
+        print("Atualizando acoes")
         self.att_acoes()
+        print("Atualizando ranks")
         investment_handler.att_stocks_ranks()
 
     def att_all(self):

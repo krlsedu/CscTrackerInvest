@@ -57,6 +57,7 @@ def att_bdr():  # put application's code here
 @app.route('/att-express', methods=['POST'])
 def att_express():  # put application's code here
     att_stocks.att_expres()
+    print("att_express done")
     return "{}", 200, {'Content-Type': 'application/json'}
 
 

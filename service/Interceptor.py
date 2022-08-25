@@ -26,5 +26,7 @@ class Interceptor:
                    'appName': 'CscTrackerInvest', 'fullClassName': className}
 
         response = requests.post('http://metrics-service:5000/metric', json=metrics)
-        print(metrics, response.status_code)
+        if response.status_code != 200:
+            print(metrics, response.status_code)
+            print(f'Error sending metrics: {response.text}')
         pass
