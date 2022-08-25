@@ -62,6 +62,10 @@ class AttStocks(Interceptor):
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return acoes
 
+    def att_bdrs(self):
+        self.att_bdr()
+        investment_handler.att_stocks_ranks()
+
     def att_bdr(self):
         bdrs = load_bdr_info()
         for bdr in bdrs:

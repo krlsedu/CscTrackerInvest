@@ -4,8 +4,12 @@
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import decimal
 import json
+import threading
+import time
+from datetime import datetime
 
 import psycopg2
+import schedule as schedule
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
 
@@ -16,6 +20,7 @@ from service.FiiHandler import FiiHandler
 from service.InvestmentHandler import InvestmentHandler
 from service.LoadInfo import load_fiis_info
 from service.StocksHandler import StocksHandler
+from service.Utils import Utils
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -33,6 +38,7 @@ fii_handler = FiiHandler()
 investment_handler = InvestmentHandler()
 att_stocks = AttStocks()
 stocks_handler = StocksHandler()
+utils = Utils()
 
 
 class Encoder(json.JSONEncoder):
@@ -47,17 +53,9 @@ def att_all():  # put application's code here
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
-
 @app.route('/att-bdr', methods=['POST'])
 def att_bdr():  # put application's code here
     att_stocks.att_bdr()
-    return "{}", 200, {'Content-Type': 'application/json'}
-
-
-@app.route('/att-express', methods=['POST'])
-def att_express():  # put application's code here
-    att_stocks.att_expres()
-    print("att_express done")
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
@@ -111,6 +109,33 @@ def get_investments():
         msg = {'error': str(e)}
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
+
+def att_expres():
+    if utils.work_day() and utils.work_time():
+        print("att_express start")
+        att_stocks.att_expres()
+        print("att_express done")
+
+
+def att_bdr():
+    if utils.work_day() and utils.work_time():
+        print("att_bdrs start")
+        att_stocks.att_bdrs()
+        print("att_bdrs done")
+
+
+schedule.every(15).minutes.do(att_expres)
+schedule.every(1).hours.do(att_bdr)
+
+
+def schedule_job():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+
+t1 = threading.Thread(target=schedule_job, args=())
+t1.start()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
