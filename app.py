@@ -125,7 +125,7 @@ def att_bdr():
 
 
 schedule.every(15).minutes.do(att_expres)
-schedule.every(1).hours.do(att_bdr)
+schedule.every(2).hours.do(att_bdr)
 
 
 def schedule_job():
