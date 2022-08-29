@@ -60,12 +60,15 @@ class HttpRepository(Interceptor):
             except IndexError:
                 pass
             except ValueError:
-                td__text = td[3].find_all("div")[0].text
-                __object = float(td__text.replace(".", "").replace(",", "."))
-                if last_dy is None:
-                    last_dy = __object
-                values.append(__object)
-                pass
+                try:
+                    td__text = td[3].find_all("div")[0].text
+                    __object = float(td__text.replace(".", "").replace(",", "."))
+                    if last_dy is None:
+                        last_dy = __object
+                    values.append(__object)
+                except:
+                    pass
+
         try:
             f = stdev(values)
             mean1 = mean(values)
@@ -76,12 +79,22 @@ class HttpRepository(Interceptor):
         try:
             stock["segment"] = self.find_value(soup, "Segmento", "text", 2, 0)
         except:
-            stock["segment"] = soup.find_all(text="Segmento de Atuação")[0].parent.parent.find_all("strong")[0].text
+            try:
+                stock["segment"] = self.find_value(soup, "Segmento de Atuação", "text", 2, 0)
+            except:
+                try:
+                    stock["segment"] = self.find_value(soup, "\nClasse anbima\n", "text", 2, 0)
+                except:
+                    pass
 
         try:
             price_text = self.find_value(soup, "Valor atual do ativo", "title", 2, 0)
         except:
-            price_text = self.find_value(soup, "Valor atual", "title", 2, 0)
+            try:
+                price_text = self.find_value(soup, "Valor atual", "title", 2, 0)
+            except:
+                price_text = self.find_value(soup, "Preço da cota", "title", 2, 0)
+
         stock["price"] = float(price_text.replace(".", "").replace(",", "."))
 
         try:

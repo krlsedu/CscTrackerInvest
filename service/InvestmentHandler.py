@@ -41,7 +41,7 @@ class InvestmentHandler(Interceptor):
                     total_value = float(user_stock['quantity'] * user_stock['avg_price'])
 
                     total_value += movement['quantity'] * movement['price'] * float(coef)
-                    quantity = user_stock['quantity'] + movement['quantity'] * coef
+                    quantity = float(user_stock['quantity']) + float(movement['quantity']) * float(coef)
                     if quantity != 0:
                         avg_price = total_value / float(quantity)
                     else:
@@ -68,19 +68,24 @@ class InvestmentHandler(Interceptor):
         try:
             stock['id']
         except Exception as e:
-            self.add_stock(ticker_)
+            ticker_ = self.add_stock(ticker_)
             stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker_})
         return stock
 
     def add_stock(self, ticker_):
         stock = http_repository.get_firt_stock_type(ticker_)
+        type_ = stock['type']
+        code_ = stock['code']
+        if type_ == 15:
+            code_ = ticker_.upper()
         investment_tp = {
-            'ticker': stock['code'],
+            'ticker': code_,
             'name': stock['name'],
-            'investment_type_id': stock['type'],
+            'investment_type_id': type_,
             'url_infos': stock['url']
         }
         generic_repository.insert("stocks", investment_tp)
+        return investment_tp['ticker']
 
     def get_stocks(self):
         user_id = generic_repository.get_user()['id']
