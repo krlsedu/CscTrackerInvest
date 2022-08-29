@@ -130,6 +130,7 @@ class InvestmentHandler(Interceptor):
                                                         float(stock_consolidated['price_atu'])
                 stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
                     stock_consolidated['total_value_invest']) - 1
+                stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + stock_['url_infos']
                 stocks_consolidated.append(stock_consolidated)
 
                 segment['quantity'] = float(stock['quantity'])
