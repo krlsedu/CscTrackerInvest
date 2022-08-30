@@ -29,7 +29,7 @@ class StocksHandler(Interceptor):
                   f"    and rank_pl > 0  " \
                   f"    and pl >= 0  " \
                   f"    and pvp >= 0  " \
-                  f"    and ev_ebit > 0  " \
+                  f"    and (ev_ebit > 0 or investment_type_id = 15)" \
                   f"    and avg_liquidity > {liquidez} " \
                   f"order by " \
                   f"    ev_ebit, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
