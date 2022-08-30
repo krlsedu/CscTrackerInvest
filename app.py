@@ -86,6 +86,13 @@ def get_bdrs():
     return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/founds', methods=['GET'])
+@cross_origin()
+def get_founds():
+    stocks = stocks_handler.get_founds()
+    return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
+
+
 @app.route('/investment-movement', methods=['POST'])
 @cross_origin()
 def add_movement():
@@ -129,6 +136,7 @@ schedule.every(2).hours.do(att_bdr)
 
 
 def schedule_job():
+    att_stocks.att_expres()
     while True:
         schedule.run_pending()
         time.sleep(1)

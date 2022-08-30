@@ -52,13 +52,14 @@ class AttStocks(Interceptor):
             else:
                 try:
                     stock_['price'] = acao['price']
-                    stock_['dy'] = acao['dy']
-                    stock_['pvp'] = acao['p_vp']
+                    stock_['pvp'] = acao['p_VP']
                     stock_['pl'] = acao['p_L']
+                    stock_['ev_ebit'] = acao['eV_Ebit']
                     stock_['avg_liquidity'] = acao['liquidezMediaDiaria']
+                    stock_['dy'] = acao['dy']
                 except Exception as e:
                     pass
-
+            generic_repository.update("stocks", ["ticker"], stock_)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return acoes
 
@@ -93,5 +94,6 @@ class AttStocks(Interceptor):
                     stock_['avg_liquidity'] = fii['liquidezmediadiaria']
                 except Exception as e:
                     pass
+            generic_repository.update("stocks", ["ticker"], stock_)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fiis
