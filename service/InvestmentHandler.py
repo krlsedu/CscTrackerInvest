@@ -70,7 +70,15 @@ class InvestmentHandler(Interceptor):
         except Exception as e:
             ticker_ = self.add_stock(ticker_)
             stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker_})
+            self.add_stock_price(stock)
         return stock
+
+    def add_stock_price(self, stock):
+        stock_price = {
+            "investment_id": stock['id'],
+            "price": stock['price'],
+        }
+        generic_repository.insert("stocks_prices", stock_price)
 
     def add_stock(self, ticker_):
         stock = http_repository.get_firt_stock_type(ticker_)
