@@ -137,6 +137,7 @@ schedule.every(2).hours.do(att_bdr)
 
 def schedule_job():
     att_stocks.att_expres()
+    att_stocks.att_prices()
     while True:
         schedule.run_pending()
         time.sleep(1)

@@ -164,3 +164,8 @@ class HttpRepository(Interceptor):
         else:
             strong__text = obj.find_all(child_Type)[0][value]
         return strong__text
+
+    def get_prices(self, ticker, type):
+        response = requests.get(f'https://statusinvest.com.br/{type}/tickerprice?type=4&currences%5B%5D=1',
+                                params={"ticker": ticker})
+        return response.json()

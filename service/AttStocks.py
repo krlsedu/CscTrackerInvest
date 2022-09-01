@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import request
 
 from repository.HttpRepository import HttpRepository
@@ -105,3 +107,27 @@ class AttStocks(Interceptor):
 
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fiis
+
+    def att_prices(self):
+        fiis = load_fiis_info()
+        self.att_prices_generic(fiis, 'fii')
+        acoes = load_acoes_info()
+        self.att_prices_generic(acoes, 'acao')
+
+    def att_prices_generic(self, stocks, type):
+        for stock in stocks:
+            print(f"Atualizando a {type}: {stock['ticker']}")
+            stock_ = investment_handler.get_stock(stock['ticker'])
+            if stock_['prices_imported'] == 'N':
+                infos = http_repository.get_prices(stock_['ticker'], type)
+                for info in infos:
+                    prices = info['prices']
+                    for price in prices:
+                        stock_['price'] = price['price']
+                        investment_handler.add_stock_price(stock_,
+                                                           datetime.strptime(price['date'], '%d/%m/%y %H:%M')
+                                                           .strftime("%Y-%m-%d"))
+                stock_['prices_imported'] = 'S'
+                stock_['price'] = stock['price']
+                generic_repository.update("stocks", ["ticker"], stock_)
+            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")

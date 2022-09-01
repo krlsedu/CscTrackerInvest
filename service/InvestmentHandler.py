@@ -73,12 +73,17 @@ class InvestmentHandler(Interceptor):
             self.add_stock_price(stock)
         return stock
 
-    def add_stock_price(self, stock):
+    def add_stock_price(self, stock, date=None):
         stock_price = {
             "investment_id": stock['id'],
             "price": stock['price'],
         }
-        generic_repository.insert("stocks_prices", stock_price)
+        if date is not None:
+            stock_price['date_value'] = date
+        self.add_price(stock_price)
+
+    def add_price(self, price):
+        generic_repository.insert("stocks_prices", price)
 
     def add_stock(self, ticker_):
         stock = http_repository.get_firt_stock_type(ticker_)
