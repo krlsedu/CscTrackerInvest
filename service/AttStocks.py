@@ -26,24 +26,20 @@ class AttStocks(Interceptor):
         self.att_fundos()
         print("Atualizando ranks")
         investment_handler.att_stocks_ranks()
+        print("end att express")
 
-    def att_all(self):
-        tp = request.args.get('tp_invest')
-        if tp is None:
-            self.att_fiis()
-            self.att_acoes()
-            investment_handler.att_stocks_ranks()
-            self.att_bdr()
-        elif tp == 'fiis':
-            self.att_fiis()
-        elif tp == 'acoes':
-            self.att_acoes()
-        elif tp == 'bdr':
-            self.att_bdr()
-        elif tp == 'express':
-            self.att_fiis()
-            self.att_acoes()
+    def att_full(self):
+        print("Atualizando fiis")
+        self.att_fiis(True)
+        print("Atualizando acoes")
+        self.att_acoes(True)
+        print("Atualizando fundos")
+        self.att_fundos()
+        print("Atualizando BDRs")
+        self.att_bdr()
+        print("Atualizando ranks")
         investment_handler.att_stocks_ranks()
+        print("end att full")
 
     def att_acoes(self, full=False):
         acoes = load_acoes_info()

@@ -47,24 +47,6 @@ class Encoder(json.JSONEncoder):
             return float(obj)
 
 
-@app.route('/att-all', methods=['POST'])
-def att_all():  # put application's code here
-    att_stocks.att_all()
-    return "{}", 200, {'Content-Type': 'application/json'}
-
-
-@app.route('/att-bdr', methods=['POST'])
-def att_bdr():  # put application's code here
-    att_stocks.att_bdr()
-    return "{}", 200, {'Content-Type': 'application/json'}
-
-
-@app.route('/att-fiis', methods=['POST'])
-def hello_world():  # put application's code here
-    fii_handler.att_fiis(load_fiis_info())
-    return 'Hello World!'
-
-
 @app.route('/fiis', methods=['GET'])
 @cross_origin()
 def get_fiis_list():
@@ -117,31 +99,41 @@ def get_investments():
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
-def att_expres():
-    if utils.work_day() and utils.work_time():
-        print("att_express start")
-        att_stocks.att_expres()
-        print("att_express done")
-
-
 @app.route('/att-prices', methods=['POST'])
 def att_prices():
-    att_stocks.att_prices()
-    att_stocks.att_prices(True)
+    if utils.work_day():
+        print('att_prices requested')
+        threading.Thread(target=att_prices_thr()).start()
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
-schedule.every(15).minutes.do(att_expres)
+def att_prices_thr():
+    att_stocks.att_prices()
+    att_stocks.att_prices(True)
 
 
-def schedule_job():
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+@app.route('/att-express', methods=['POST'])
+def att_express():
+    if utils.work_day() and utils.work_time():
+        print("att_express requested")
+        threading.Thread(target=att_stocks.att_expres).start()
+    return "{}", 200, {'Content-Type': 'application/json'}
 
 
-t1 = threading.Thread(target=schedule_job, args=())
-t1.start()
+@app.route('/att-bdr', methods=['POST'])
+def att_bdr():
+    if utils.work_day():
+        print("att_bdr requested")
+        threading.Thread(target=att_stocks.att_bdr()).start()
+
+    return "{}", 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/att-full', methods=['POST'])
+def att_full():  # put application's code here
+    print("att_full requested")
+    threading.Thread(target=att_stocks.att_full()).start()
+    return "{}", 200, {'Content-Type': 'application/json'}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
