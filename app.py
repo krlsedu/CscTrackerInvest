@@ -126,18 +126,17 @@ def att_expres():
 
 def att_prices():
     att_stocks.att_prices(True)
-    att_bdr()
 
 
 def att_bdr():
-    if utils.work_day() and utils.work_time():
         print("att_bdrs start")
         att_stocks.att_bdrs()
         print("att_bdrs done")
 
 
 schedule.every(15).minutes.do(att_expres)
-# schedule.every().day.at("22:00").do(att_prices())
+schedule.every().day.at("22:00").do(att_prices())
+schedule.every().day.at("10:00").do(att_bdr())
 
 
 def schedule_job():
