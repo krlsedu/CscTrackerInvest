@@ -124,19 +124,13 @@ def att_expres():
         print("att_express done")
 
 
+@app.route('/att-prices', methods=['POST'])
 def att_prices():
     att_stocks.att_prices(True)
-
-
-def att_bdr():
-        print("att_bdrs start")
-        att_stocks.att_bdrs()
-        print("att_bdrs done")
+    return "{}", 200, {'Content-Type': 'application/json'}
 
 
 schedule.every(15).minutes.do(att_expres)
-schedule.every().day.at("22:00").do(att_prices())
-schedule.every().day.at("10:00").do(att_bdr())
 
 
 def schedule_job():
