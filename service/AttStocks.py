@@ -22,6 +22,8 @@ class AttStocks(Interceptor):
         self.att_fiis()
         print("Atualizando acoes")
         self.att_acoes()
+        print("Atualizando fundos")
+        self.att_fundos()
         print("Atualizando ranks")
         investment_handler.att_stocks_ranks()
 
@@ -107,6 +109,19 @@ class AttStocks(Interceptor):
 
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fiis
+
+    def att_fundos(self):
+        fundos = generic_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15})
+        for fundo in fundos:
+            company_ = fundo['url_infos']
+            company_ = company_.replace('/fundos-de-investimento/', '')
+            print(f"Atualizando Fundo: {company_}")
+            stock_ = investment_handler.get_stock(company_)
+            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True)
+
+            investment_handler.add_stock_price(stock_)
+            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+        return fundos
 
     def att_prices(self, daily=False):
         if not daily:
