@@ -140,9 +140,6 @@ schedule.every().day.at("10:00").do(att_bdr())
 
 
 def schedule_job():
-    att_stocks.att_expres()
-    att_stocks.att_prices()
-    att_stocks.att_prices(True)
     while True:
         schedule.run_pending()
         time.sleep(1)
