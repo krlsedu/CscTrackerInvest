@@ -79,6 +79,8 @@ class AttStocks(Interceptor):
             stock_ = investment_handler.get_stock(company_)
             stock_, investment_type = http_repository.get_values_by_ticker(stock_, True)
 
+            generic_repository.update("stocks", ["ticker"], stock_)
+
             investment_handler.add_stock_price(stock_)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return bdrs
@@ -99,6 +101,7 @@ class AttStocks(Interceptor):
                     stock_['avg_liquidity'] = fii['liquidezmediadiaria']
                 except Exception as e:
                     pass
+
             generic_repository.update("stocks", ["ticker"], stock_)
 
             investment_handler.add_stock_price(stock_)
@@ -109,11 +112,9 @@ class AttStocks(Interceptor):
     def att_fundos(self):
         fundos = generic_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15})
         for fundo in fundos:
-            company_ = fundo['url_infos']
-            company_ = company_.replace('/fundos-de-investimento/', '')
-            print(f"Atualizando Fundo: {company_}")
-            stock_ = investment_handler.get_stock(company_)
-            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True)
+            stock_, investment_type = http_repository.get_values_by_ticker(fundo, True)
+
+            generic_repository.update("stocks", ["ticker"], stock_)
 
             investment_handler.add_stock_price(stock_)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
