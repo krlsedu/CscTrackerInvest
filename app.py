@@ -126,6 +126,7 @@ def att_expres():
 
 @app.route('/att-prices', methods=['POST'])
 def att_prices():
+    att_stocks.att_prices()
     att_stocks.att_prices(True)
     return "{}", 200, {'Content-Type': 'application/json'}
 
