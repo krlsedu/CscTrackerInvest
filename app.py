@@ -6,7 +6,7 @@ import decimal
 import json
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import psycopg2
 import schedule as schedule
@@ -124,6 +124,11 @@ def att_expres():
         print("att_express done")
 
 
+def att_prices():
+    att_stocks.att_prices(True)
+    att_bdr()
+
+
 def att_bdr():
     if utils.work_day() and utils.work_time():
         print("att_bdrs start")
@@ -132,12 +137,13 @@ def att_bdr():
 
 
 schedule.every(15).minutes.do(att_expres)
-schedule.every(2).hours.do(att_bdr)
+# schedule.every().day.at("22:00").do(att_prices())
 
 
 def schedule_job():
     att_stocks.att_expres()
     att_stocks.att_prices()
+    att_stocks.att_prices(True)
     while True:
         schedule.run_pending()
         time.sleep(1)

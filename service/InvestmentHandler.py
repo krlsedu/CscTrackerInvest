@@ -1,17 +1,19 @@
 import json
+from datetime import timedelta, datetime
 
 import pandas as pd
 from flask import request
 
-from model.UserStocks import UserStocks
 from repository.HttpRepository import HttpRepository
 from repository.Repository import GenericRepository
 from service.FiiHandler import FiiHandler
 from service.Interceptor import Interceptor
+from service.StocksHandler import StocksHandler
 
 generic_repository = GenericRepository()
 http_repository = HttpRepository()
 fii_handler = FiiHandler()
+stock_handler = StocksHandler()
 
 
 class InvestmentHandler(Interceptor):
@@ -83,7 +85,10 @@ class InvestmentHandler(Interceptor):
         self.add_price(stock_price)
 
     def add_price(self, price):
-        generic_repository.insert("stocks_prices", price)
+        try:
+            generic_repository.insert("stocks_prices", price)
+        except Exception as e:
+            print(e)
 
     def add_stock(self, ticker_):
         stock = http_repository.get_firt_stock_type(ticker_)
@@ -125,11 +130,16 @@ class InvestmentHandler(Interceptor):
                 stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_)
 
+                data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
+                price_ant = stock_handler.get_price(stock_['id'], data_ant)
+
                 segment['type'] = investment_type['name']
                 segment['type_id'] = investment_type['id']
                 stock_consolidated['type'] = investment_type['name']
 
                 stock_consolidated['price_atu'] = stock_['price']
+                if price_ant is not None:
+                    stock_consolidated['price_ant'] = price_ant['price']
                 stock_consolidated['segment'] = stock_['segment']
                 segment['segment'] = stock_['segment']
 
@@ -141,14 +151,25 @@ class InvestmentHandler(Interceptor):
                 stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
                 stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
                                                         float(stock_consolidated['price_atu'])
+                if price_ant is not None:
+                    stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
+                    stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
+                    stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
+                                                      stock_consolidated['total_value_ant']
                 stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
                     stock_consolidated['total_value_invest']) - 1
                 stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + stock_['url_infos']
+
                 stocks_consolidated.append(stock_consolidated)
 
                 segment['quantity'] = float(stock['quantity'])
-                segment['total_value_invest'] = float(stock['quantity'] * stock['avg_price'])
-                segment['total_value_atu'] = float(stock['quantity']) * float(stock_consolidated['price_atu'])
+                segment['total_value_invest'] = stock_consolidated['total_value_invest']
+                segment['total_value_atu'] = stock_consolidated['total_value_atu']
+
+                if price_ant is not None:
+                    segment['total_value_ant'] = stock_consolidated['total_value_ant']
+                    segment['variation'] = stock_consolidated['variation']
+
                 segments.append(segment)
 
             df_stocks = self.sum_data(stocks_consolidated)

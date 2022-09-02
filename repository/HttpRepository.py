@@ -165,7 +165,17 @@ class HttpRepository(Interceptor):
             strong__text = obj.find_all(child_Type)[0][value]
         return strong__text
 
-    def get_prices(self, ticker, type):
-        response = requests.get(f'https://statusinvest.com.br/{type}/tickerprice?type=4&currences%5B%5D=1',
+    def get_prices(self, ticker, type, daily=False):
+        if daily:
+            response = requests.get(f'https://statusinvest.com.br/{type}/tickerprice?type=-1&currences%5B%5D=1',
                                 params={"ticker": ticker})
+        else:
+            response = requests.get(f'https://statusinvest.com.br/{type}/tickerprice?type=4&currences%5B%5D=1',
+                                params={"ticker": ticker})
+        return response.json()
+
+    def get_prices_fundos(self, ticker):
+        response = requests.get(f'https://statusinvest.com.br/fundoinvestimento/profitabilitymainresult?'
+                                f'nome_clean={ticker}'
+                                f'&time=6')
         return response.json()

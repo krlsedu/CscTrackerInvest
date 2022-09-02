@@ -35,3 +35,6 @@ create table stocks_prices
 
 alter table stocks
     add prices_imported text default 'N';
+
+create index index_select_price
+    on stocks_prices (date_value desc, investment_id desc);

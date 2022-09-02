@@ -108,26 +108,72 @@ class AttStocks(Interceptor):
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fiis
 
-    def att_prices(self):
+    def att_prices(self, daily=False):
+        if not daily:
+            fundos = generic_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15})
+            self.att_prices_generic(fundos, 'fundo', daily)
         fiis = load_fiis_info()
-        self.att_prices_generic(fiis, 'fii')
+        self.att_prices_generic(fiis, 'fii', daily)
         acoes = load_acoes_info()
-        self.att_prices_generic(acoes, 'acao')
+        self.att_prices_generic(acoes, 'acao', daily)
+        bdrs = load_bdr_info()
+        self.att_prices_generic(bdrs, 'bdr', daily)
 
-    def att_prices_generic(self, stocks, type):
+    def att_prices_generic(self, stocks, type, daily=False):
         for stock in stocks:
+            self.att_price_generic(stock, type, daily)
+
+    def att_price_generic(self, stock, type, daily=False):
+        if type == 'bdr':
+            company_ = stock['url']
+            company_ = company_.replace('/bdrs/', '')
+            print(f"Atualizando o {type}: {company_}")
+            stock_ = investment_handler.get_stock(company_)
+            stock['price'] = stock_['price']
+        elif type == 'fundo':
+            stock_ = stock
+        else:
             print(f"Atualizando a {type}: {stock['ticker']}")
             stock_ = investment_handler.get_stock(stock['ticker'])
-            if stock_['prices_imported'] == 'N':
-                infos = http_repository.get_prices(stock_['ticker'], type)
+            stock['price'] = stock_['price']
+        if stock_['prices_imported'] == 'N' or daily:
+            if type == 'fundo' and not daily:
+                company_ = stock['url_infos']
+                company_ = company_.replace('/fundos-de-investimento/', '')
+                infos = http_repository.get_prices_fundos(company_)
+                datas = infos['data']['chart']['category']
+                values = infos['data']['chart']['series']['fundo']
+                for i in range(len(datas)):
+                    data = datas[i]
+                    data = datetime.strptime(data, '%d/%m/%y').strftime("%Y-%m-%d")
+                    price = values[i]['price']
+                    stock_['price'] = price
+                    investment_handler.add_stock_price(stock_, data)
+                pass
+            else:
+                infos = http_repository.get_prices(stock_['ticker'], type, daily)
                 for info in infos:
                     prices = info['prices']
                     for price in prices:
                         stock_['price'] = price['price']
-                        investment_handler.add_stock_price(stock_,
-                                                           datetime.strptime(price['date'], '%d/%m/%y %H:%M')
-                                                           .strftime("%Y-%m-%d"))
-                stock_['prices_imported'] = 'S'
-                stock_['price'] = stock['price']
-                generic_repository.update("stocks", ["ticker"], stock_)
-            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                        if daily:
+                            investment_handler.add_stock_price(stock_,
+                                                               datetime.strptime(price['date'], '%d/%m/%y %H:%M')
+                                                               .strftime("%Y-%m-%d %H:%M"))
+                        else:
+                            investment_handler.add_stock_price(stock_,
+                                                               datetime.strptime(price['date'], '%d/%m/%y %H:%M')
+                                                               .strftime("%Y-%m-%d"))
+            stock_['prices_imported'] = 'S'
+            stock_['price'] = stock['price']
+            generic_repository.update("stocks", ["ticker"], stock_)
+        print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+
+    def update_stock(self, stock):
+        if stock['investment_type'] == 2:
+            self.att_price_generic(stock, 'fii')
+        elif stock['investment_type'] == 1:
+            self.att_price_generic(stock, 'acao')
+        elif stock['investment_type'] == 4:
+            self.att_price_generic(stock, 'bdr')
+        return stock

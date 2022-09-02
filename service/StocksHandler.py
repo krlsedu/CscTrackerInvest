@@ -72,3 +72,22 @@ class StocksHandler(Interceptor):
             stocks.append(stock)
         cursor.close()
         return stocks
+
+    def get_price(self, investiment_id, date):
+        select_ = f"select * from stocks_prices where " \
+                  f"date_value <= '{date}' " \
+                  f"and investment_id = {investiment_id} " \
+                  f"order by date_value desc limit 1"
+        cursor, cursor_ = generic_repository.execute_select(select_)
+        col_names = cursor.description
+        obj = {}
+        for row in cursor_:
+            i = 0
+            for col_name in col_names:
+                obj[col_name[0]] = row[i]
+                i += 1
+            cursor.close()
+            return obj
+
+        cursor.close()
+
