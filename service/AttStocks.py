@@ -24,6 +24,8 @@ class AttStocks(Interceptor):
         self.att_acoes()
         print("Atualizando fundos")
         self.att_fundos()
+        print("Atualizando bdrs")
+        self.att_brd_expres()
         print("Atualizando ranks")
         investment_handler.att_stocks_ranks()
         print("end att express")
@@ -83,6 +85,26 @@ class AttStocks(Interceptor):
 
             investment_handler.add_stock_price(stock_)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+        return bdrs
+
+    def att_brd_expres(self):
+        bdrs = self.load_bdr_used()
+        for bdr in bdrs:
+            company_ = bdr['ticker']
+            stock_ = investment_handler.get_stock(company_)
+            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True)
+
+            generic_repository.update("stocks", ["ticker"], stock_)
+
+            investment_handler.add_stock_price(stock_)
+            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+        return bdrs
+
+    def load_bdr_used(self):
+        bdrs = generic_repository.get_objects_from_sql(
+            "select * from stocks "
+            "where investment_type_id = 4 "
+            "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id)")
         return bdrs
 
     def att_fiis(self, full=False):

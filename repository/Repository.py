@@ -159,6 +159,20 @@ class GenericRepository(Interceptor):
         cursor.close()
         return objects
 
+    def get_objects_from_sql(self, sql):
+        cursor, cursor_ = self.execute_select(sql)
+        col_names = cursor.description
+        objects = []
+        for row in cursor_:
+            obj = {}
+            i = 0
+            for col_name in col_names:
+                obj[col_name[0]] = row[i]
+                i += 1
+            objects.append(obj)
+        cursor.close()
+        return objects
+
     def col_names(self, data, keys, object_, table):
         if object_ is None:
             ks = "*"
