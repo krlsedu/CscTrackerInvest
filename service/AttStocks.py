@@ -138,6 +138,7 @@ class AttStocks(Interceptor):
 
             generic_repository.update("stocks", ["ticker"], stock_)
 
+            stock_['price'] = float(stock_['price'])
             investment_handler.add_stock_price(stock_)
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fundos
