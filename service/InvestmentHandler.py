@@ -130,7 +130,10 @@ class InvestmentHandler(Interceptor):
                 stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_)
 
-                data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
+                if investment_type['id'] == 15:
+                    data_ant = (datetime.now() - timedelta(2)).strftime('%Y-%m-%d 23:59:59')
+                else:
+                    data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
                 price_ant = stock_handler.get_price(stock_['id'], data_ant)
 
                 segment['type'] = investment_type['name']
