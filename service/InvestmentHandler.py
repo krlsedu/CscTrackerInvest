@@ -1,5 +1,6 @@
 import json
-from datetime import timedelta, datetime
+import os
+from datetime import timedelta, datetime, timezone
 
 import pandas as pd
 from flask import request
@@ -83,10 +84,10 @@ class InvestmentHandler(Interceptor):
         if date is not None:
             stock_price['date_value'] = date
 
-        data_ant = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        data_ant = datetime.now().astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         price_ant = stock_handler.get_price(stock['id'], data_ant)
         if price_ant is not None:
-            if price_ant['price'] != stock['price']:
+            if float(price_ant['price']) != float(stock['price']):
                 self.add_price(stock_price)
         else:
             self.add_price(stock_price)
