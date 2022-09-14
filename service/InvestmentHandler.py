@@ -82,7 +82,14 @@ class InvestmentHandler(Interceptor):
         }
         if date is not None:
             stock_price['date_value'] = date
-        self.add_price(stock_price)
+
+        data_ant = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        price_ant = stock_handler.get_price(stock['id'], data_ant)
+        if price_ant is not None:
+            if price_ant['price'] != stock['price']:
+                self.add_price(stock_price)
+        else:
+            self.add_price(stock_price)
 
     def add_price(self, price):
         try:
