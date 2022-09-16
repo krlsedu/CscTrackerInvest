@@ -95,7 +95,7 @@ class InvestmentHandler(Interceptor):
     def add_price(self, price):
         try:
             if price['price'] is not None:
-                generic_repository.insert("investment_prices", price)
+                generic_repository.insert("stocks_prices", price)
         except Exception as e:
             print(e)
 
