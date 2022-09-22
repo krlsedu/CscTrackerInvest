@@ -216,7 +216,6 @@ class InvestmentHandler(Interceptor):
         fiis = fii_handler.get_fiis()
         founds = stock_handler.get_founds()
         stock_ref = None
-        stock_ = None
         for stock in stocks:
             stock_ = stock
             stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br, founds)
@@ -266,7 +265,10 @@ class InvestmentHandler(Interceptor):
 
             rank = stock_ref['rank']
             if rank <= 20:
-                if stock_['perc_atu'] > perc_ideal:
+                if stock_['gain'] > 0.2:
+                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
+                elif stock_['perc_atu'] > perc_ideal:
                     sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
                     stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec) \
                                                + " -> Rank: " + str(rank)
@@ -277,20 +279,34 @@ class InvestmentHandler(Interceptor):
                                                + " -> Rank: " + str(rank)
             elif rank > 40:
                 stock_['buy_sell_indicator'] = "sell"
-                stock_['recommendation'] = "Sell all - strategy" \
-                                           + " -> Rank: " + str(rank)
+                if stock_['gain'] > 0.2:
+                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
+                elif stock_['perc_atu'] > 0:
+                    if rank > 10000:
+                        tiker_prefix = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
+                        stock_['recommendation'] = "Sell all - another " + tiker_prefix + " ticker best ranked "
+                    else:
+                        stock_['recommendation'] = "Sell all - strategy" \
+                                                   + " -> Rank: " + str(rank)
+                else:
+                    stock_['recommendation'] = "Do not buy" \
+                                               + " -> Rank: " + str(rank)
             else:
                 if stock_['gain'] > 0.2:
                     stock_['buy_sell_indicator'] = "sell"
-                    stock_['recommendation'] = "Sell all - great gain -> " + str(stock_['gain'] * 100) + "%"
-                if stock_['perc_atu'] > perc_ideal:
+                    stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
+                elif stock_['perc_atu'] > perc_ideal:
                     sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
                     stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec) \
                                                + " -> Rank: " + str(rank)
+                else:
+                    stock_['recommendation'] = "Neutral -> Rank: " + str(rank)
+
         else:
             if stock_['gain'] > 0.2:
                 stock_['buy_sell_indicator'] = "sell"
-                stock_['recommendation'] = "Sell all - great gain -> " + str(stock_['gain'] * 100) + "%"
+                stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
             elif stock_['perc_atu'] > perc_ideal:
                 sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
                 stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec)
@@ -352,6 +368,15 @@ class InvestmentHandler(Interceptor):
         b = a.replace(',', 'v')
         c = b.replace('.', ',')
         return "R$ " + c.replace('v', '.')
+
+    def to_percent_from_aliq(self, value):
+        return self.to_percent(value * 100)
+
+    def to_percent(self, value):
+        a = '{:,.2f}'.format(float(value))
+        b = a.replace(',', 'v')
+        c = b.replace('.', ',')
+        return c.replace('v', '.')+"%"
 
     def sum_data(self, data):
         df = pd.DataFrame.from_dict(data)

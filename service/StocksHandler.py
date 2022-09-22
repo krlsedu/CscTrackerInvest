@@ -36,6 +36,7 @@ class StocksHandler(Interceptor):
         cursor, cursor_ = generic_repository.execute_select(select_)
         stocks = []
         rank = 1
+        tikers_prefix = []
         for row in cursor_:
             i = 0
             stock = {}
@@ -44,8 +45,13 @@ class StocksHandler(Interceptor):
                 i += 1
             stock['url_fundamentos'] = f"https://www.fundamentus.com.br/detalhes.php?papel={stock['ticker']}"
             stock['url_statusinvest'] = f"https://statusinvest.com.br{stock['url_infos']}"
-            stock['rank'] = rank
-            rank += 1
+            tiker_prefix = ''.join([i for i in stock['ticker'] if not i.isdigit()])
+            if tiker_prefix not in tikers_prefix:
+                stock['rank'] = rank
+                rank += 1
+                tikers_prefix.append(tiker_prefix)
+            else:
+                stock['rank'] = rank + 10000
             stocks.append(stock)
         cursor.close()
         return stocks
@@ -96,4 +102,3 @@ class StocksHandler(Interceptor):
             return obj
 
         cursor.close()
-
