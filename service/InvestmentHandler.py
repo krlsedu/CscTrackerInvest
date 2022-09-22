@@ -290,7 +290,11 @@ class InvestmentHandler(Interceptor):
                         stock_['recommendation'] = "Sell all - strategy" \
                                                    + " -> Rank: " + str(rank)
                 else:
-                    stock_['recommendation'] = "Do not buy" \
+                    if rank > 10000:
+                        tiker_prefix = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
+                        stock_['recommendation'] = "Do not buy - another " + tiker_prefix + " ticker best ranked "
+                    else:
+                        stock_['recommendation'] = "Do not buy" \
                                                + " -> Rank: " + str(rank)
             else:
                 if stock_['gain'] > 0.2:
