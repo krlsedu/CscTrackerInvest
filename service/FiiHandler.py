@@ -50,8 +50,11 @@ class FiiHandler(Interceptor):
         else:
             liquidez = float(liquidez)
         fiis = generic_repository.get_fiis(liquidez)
+        rank = 1
         for fii in fiis:
             try:
+                fii['rank'] = rank
+                rank += 1
                 fii['price'] = values_fiis[fii['ticker']]
                 self.att_price(fii)
             except Exception as e:

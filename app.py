@@ -91,9 +91,8 @@ def add_movements():
 @cross_origin()
 def get_investments():
     try:
-        consolidated = investment_handler.get_stocks_consolidated()
-        dumps = json.dumps(consolidated)
-        return dumps, 200, {'Content-Type': 'application/json'}
+        consolidated = investment_handler.buy_sell_indication()
+        return consolidated, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}

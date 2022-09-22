@@ -1,4 +1,5 @@
 import json
+import locale
 import os
 from datetime import timedelta, datetime, timezone
 
@@ -200,6 +201,153 @@ class InvestmentHandler(Interceptor):
             return ret
         else:
             return []
+
+    def buy_sell_indication(self):
+        perc_ideal = 5
+        infos = self.get_stocks_consolidated()
+
+        stocks = infos['stocks']
+        type_grouped = infos['type_grouped']
+        total_invested = 0
+        for type_ in type_grouped:
+            total_invested += type_['total_value_atu']
+
+        infos['total_invested'] = total_invested
+        stocks_br = stock_handler.get_stocks(1)
+        bdrs = stock_handler.get_stocks(4)
+        fiis = fii_handler.get_fiis()
+        founds = stock_handler.get_founds()
+        stock_ref = None
+        stock_ = None
+        for stock in stocks:
+            stock_ = stock
+            stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br)
+            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+        for stock in stocks_br:
+            stock_ = stock
+            stock_ref = stock
+            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+        for stock in bdrs:
+            stock_ = stock
+            stock_ref = stock
+            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+        for stock in fiis:
+            stock_ = stock
+            stock_ref = stock
+            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+        for stock in founds:
+            stock_ = stock
+            stock_ref = stock
+            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+        infos['stocks'] = stocks
+        infos['stocks_br'] = stocks_br
+        infos['bdrs'] = bdrs
+        infos['fiis'] = fiis
+        infos['founds'] = founds
+        return infos
+
+    def get_ticket_info(self, ticker, stocks, atr):
+        for stock in stocks:
+            if stock['ticker'] == ticker:
+                return stock[atr]
+        return 0
+
+    def set_buy_sell_info(self, perc_ideal, stock_, stock_ref, total_invested, stocks):
+        stock_['buy_sell_indicator'] = "neutral"
+        if stock_ref is not None:
+            try:
+                if stock_['perc_atu'] is None:
+                    stock_['perc_atu'] = self.get_ticket_info(stock_['ticker'], stocks, 'perc_atu')
+            except:
+                stock_['perc_atu'] = self.get_ticket_info(stock_['ticker'], stocks, 'perc_atu')
+            try:
+                if stock_['gain'] is None:
+                    stock_['gain'] = self.get_ticket_info(stock_['ticker'], stocks, 'gain')
+            except:
+                stock_['gain'] = self.get_ticket_info(stock_['ticker'], stocks, 'gain')
+
+            rank = stock_ref['rank']
+            if rank <= 20:
+                if stock_['perc_atu'] > perc_ideal:
+                    sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
+                    stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec) \
+                                               + " -> Rank: " + str(rank)
+                else:
+                    stock_['buy_sell_indicator'] = "buy"
+                    sell_rec = self.get_tot_to_buy(total_invested, perc_ideal, stock_['perc_atu'])
+                    stock_['recommendation'] = "Buy to equilibrate " + self.to_brl(sell_rec) \
+                                               + " -> Rank: " + str(rank)
+            elif rank > 40:
+                stock_['buy_sell_indicator'] = "sell"
+                stock_['recommendation'] = "Sell all - strategy" \
+                                           + " -> Rank: " + str(rank)
+            else:
+                if stock_['gain'] > 0.2:
+                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['recommendation'] = "Sell all - great gain -> " + str(stock_['gain'] * 100) + "%"
+                if stock_['perc_atu'] > perc_ideal:
+                    sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
+                    stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec) \
+                                               + " -> Rank: " + str(rank)
+        else:
+            if stock_['gain'] > 0.2:
+                stock_['buy_sell_indicator'] = "sell"
+                stock_['recommendation'] = "Sell all - great gain -> " + str(stock_['gain'] * 100) + "%"
+            elif stock_['perc_atu'] > perc_ideal:
+                sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
+                stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec)
+            else:
+                stock_['recommendation'] = "Sell all - strategy"
+
+    def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br):
+        if stock['investment_type_id'] == 1:
+            for obj_ in stocks_br:
+                if obj_['ticker'] == stock['ticker']:
+                    stock_ref = obj_
+                    break
+        elif stock['investment_type_id'] == 4:
+            for obj_ in bdrs:
+                if obj_['ticker'] == stock['ticker']:
+                    stock_ref = obj_
+                    break
+        elif stock['investment_type_id'] == 2:
+            for obj_ in fiis:
+                if obj_['ticker'] == stock['ticker']:
+                    stock_ref = obj_
+                    break
+        return stock_ref
+
+    def get_tot_to_sell(self, total, perc_ideal, perc_atu):
+        valor_atu = total * perc_atu / 100
+        novo_total = total - (valor_atu - total * (perc_ideal / 100))
+        novo_valor = total * (perc_ideal / 100)
+        sell = valor_atu - novo_valor
+        val_atu = novo_valor
+        while sell > 0.01:
+            novo_total = novo_total - (val_atu - novo_total * (perc_ideal / 100))
+            novo_valor = novo_total * (perc_ideal / 100)
+            sell = val_atu - novo_valor
+            val_atu = novo_valor
+        return valor_atu - novo_valor
+
+    def get_tot_to_buy(self, total, perc_ideal, perc_atu):
+        v_atu = total * perc_atu / 100
+        new_tot = total + (total * (perc_ideal / 100) - v_atu)
+        new_val = total * (perc_ideal / 100)
+        buy = new_val - v_atu
+        val_atu = new_val
+        while buy > 0.01:
+            new_tot = new_tot + (new_tot * (perc_ideal / 100) - val_atu)
+            new_val = new_tot * (perc_ideal / 100)
+            buy = new_val - val_atu
+            val_atu = new_val
+
+        return new_val - v_atu
+
+    def to_brl(self, value):
+        locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+        valor = locale.currency(value, grouping=True, symbol=None)
+        return "R$ " + str(valor)
 
     def sum_data(self, data):
         df = pd.DataFrame.from_dict(data)

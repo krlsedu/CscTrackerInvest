@@ -35,6 +35,7 @@ class StocksHandler(Interceptor):
                   f"    ev_ebit, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
         cursor, cursor_ = generic_repository.execute_select(select_)
         stocks = []
+        rank = 1
         for row in cursor_:
             i = 0
             stock = {}
@@ -43,6 +44,8 @@ class StocksHandler(Interceptor):
                 i += 1
             stock['url_fundamentos'] = f"https://www.fundamentus.com.br/detalhes.php?papel={stock['ticker']}"
             stock['url_statusinvest'] = f"https://statusinvest.com.br{stock['url_infos']}"
+            stock['rank'] = rank
+            rank += 1
             stocks.append(stock)
         cursor.close()
         return stocks
@@ -61,6 +64,7 @@ class StocksHandler(Interceptor):
                   f"    name"
         cursor, cursor_ = generic_repository.execute_select(select_)
         stocks = []
+        rank = 1
         for row in cursor_:
             i = 0
             stock = {}
@@ -69,6 +73,8 @@ class StocksHandler(Interceptor):
                 i += 1
             stock['url_fundamentos'] = f"https://www.fundamentus.com.br/detalhes.php?papel={stock['ticker']}"
             stock['url_statusinvest'] = f"https://statusinvest.com.br{stock['url_infos']}"
+            stock['rank'] = rank
+            rank += 1
             stocks.append(stock)
         cursor.close()
         return stocks
