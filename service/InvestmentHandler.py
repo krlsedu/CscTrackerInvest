@@ -1,6 +1,4 @@
 import json
-import locale
-import os
 from datetime import timedelta, datetime, timezone
 
 import pandas as pd
@@ -350,9 +348,10 @@ class InvestmentHandler(Interceptor):
         return new_val - v_atu
 
     def to_brl(self, value):
-        locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
-        valor = locale.currency(value, grouping=True, symbol=None)
-        return "R$ " + str(valor)
+        a = '{:,.2f}'.format(float(value))
+        b = a.replace(',', 'v')
+        c = b.replace('.', ',')
+        return "R$ " + c.replace('v', '.')
 
     def sum_data(self, data):
         df = pd.DataFrame.from_dict(data)
