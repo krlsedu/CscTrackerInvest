@@ -215,21 +215,25 @@ class InvestmentHandler(Interceptor):
         type_grouped = infos['type_grouped']
         total_invested = 0
         types_sum = {}
+        types_count = {}
         for type_ in type_grouped:
             total_invested += type_['total_value_atu']
             types_sum[type_['type_id']] = type_['total_value_atu']
+            types_count[type_['type_id']] = 0
         segment_grouped = infos['segments_grouped']
         segments_sum = {}
         for segment in segment_grouped:
             segments_sum[segment['segment']] = segment['total_value_atu']
         types_sum[0] = total_invested
         types_sum['segment_sum'] = segments_sum
+        types_sum['types_count'] = types_count
         infos['total_invested'] = total_invested
 
         stocks_br, bdrs, fiis, founds = self.get_sotcks_infos()
         stock_ref = None
         for stock in stocks:
             stock_ = stock
+            types_sum['types_count'][stock['investment_type_id']] += 1
             stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br, founds)
             self.set_buy_sell_info(perc_ideal, stock_, stock_ref, types_sum, stocks)
         for stock in stocks_br:
@@ -288,6 +292,10 @@ class InvestmentHandler(Interceptor):
         total_invested = types_sum[0]
         stock_['buy_sell_indicator'] = "neutral"
         stock_ = self.set_stock_weight(stock_, types_sum, stocks)
+        try:
+            max_rank_to_buy = 20 - types_sum['types_count'][stock_['investment_type_id']]
+        except:
+            max_rank_to_buy = 20
         if stock_ref is not None:
             try:
                 if stock_['perc_atu'] is None:
@@ -301,7 +309,7 @@ class InvestmentHandler(Interceptor):
                 stock_['gain'] = self.get_ticket_info(stock_['ticker'], stocks, 'gain')
 
             rank = stock_ref['rank']
-            if rank <= 20:
+            if rank <= max_rank_to_buy:
                 if stock_['gain'] > 0.2:
                     stock_['buy_sell_indicator'] = "sell"
                     stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
@@ -332,7 +340,7 @@ class InvestmentHandler(Interceptor):
                         stock_['recommendation'] = "Do not buy - another " + tiker_prefix + " ticker best ranked "
                     else:
                         stock_['recommendation'] = "Do not buy" \
-                                               + " -> Rank: " + str(rank)
+                                                   + " -> Rank: " + str(rank)
             else:
                 if stock_['gain'] > 0.2:
                     stock_['buy_sell_indicator'] = "sell"
@@ -417,7 +425,7 @@ class InvestmentHandler(Interceptor):
         a = '{:,.2f}'.format(float(value))
         b = a.replace(',', 'v')
         c = b.replace('.', ',')
-        return c.replace('v', '.')+"%"
+        return c.replace('v', '.') + "%"
 
     def sum_data(self, data):
         df = pd.DataFrame.from_dict(data)
