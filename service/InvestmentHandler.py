@@ -221,7 +221,7 @@ class InvestmentHandler(Interceptor):
         stock_ = None
         for stock in stocks:
             stock_ = stock
-            stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br)
+            stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br, founds)
             self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
         for stock in stocks_br:
             stock_ = stock
@@ -299,7 +299,7 @@ class InvestmentHandler(Interceptor):
             else:
                 stock_['recommendation'] = "Sell all - strategy"
 
-    def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br):
+    def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br, founds):
         if stock['investment_type_id'] == 1:
             for obj_ in stocks_br:
                 if obj_['ticker'] == stock['ticker']:
@@ -312,6 +312,11 @@ class InvestmentHandler(Interceptor):
                     break
         elif stock['investment_type_id'] == 2:
             for obj_ in fiis:
+                if obj_['ticker'] == stock['ticker']:
+                    stock_ref = obj_
+                    break
+        elif stock['investment_type_id'] == 15:
+            for obj_ in founds:
                 if obj_['ticker'] == stock['ticker']:
                     stock_ref = obj_
                     break
