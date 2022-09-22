@@ -214,32 +214,36 @@ class InvestmentHandler(Interceptor):
         stocks = infos['stocks']
         type_grouped = infos['type_grouped']
         total_invested = 0
+        types_sum = {}
         for type_ in type_grouped:
             total_invested += type_['total_value_atu']
-
+            types_sum[type_['type_id']] = type_['total_value_atu']
+        segment_grouped = infos['segments_grouped']
+        segments_sum = {}
+        for segment in segment_grouped:
+            segments_sum[segment['segment']] = segment['total_value_atu']
+        types_sum[0] = total_invested
+        types_sum['segment_sum'] = segments_sum
         infos['total_invested'] = total_invested
+
         stocks_br, bdrs, fiis, founds = self.get_sotcks_infos()
         stock_ref = None
         for stock in stocks:
             stock_ = stock
             stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br, founds)
-            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, types_sum, stocks)
         for stock in stocks_br:
-            stock_ = stock
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
         for stock in bdrs:
-            stock_ = stock
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
         for stock in fiis:
-            stock_ = stock
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
         for stock in founds:
-            stock_ = stock
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, total_invested, stocks)
+            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
         infos['stocks'] = stocks
         infos['stocks_br'] = stocks_br
         infos['bdrs'] = bdrs
@@ -253,8 +257,37 @@ class InvestmentHandler(Interceptor):
                 return stock[atr]
         return 0
 
-    def set_buy_sell_info(self, perc_ideal, stock_, stock_ref, total_invested, stocks):
+    def set_stock_weight(self, stock, types_sum, stocks):
+        stock['ticker_weight_in_all'] = 0
+        stock['ticker_weight_in_type'] = 0
+        try:
+            segment_total = types_sum['segment_sum'][stock['segment']]
+            stock['segment_weight_in_all'] = segment_total / types_sum[0]
+            stock['segment_weight_in_type'] = segment_total / types_sum[stock['investment_type_id']]
+        except:
+            stock['segment_weight_in_all'] = 0
+            stock['segment_weight_in_type'] = 0
+
+        try:
+            stock['ticker_weight_in_type'] = stock['total_value_atu'] / types_sum[stock['investment_type_id']]
+        except:
+            for stock_ in stocks:
+                if stock_['ticker'] == stock['ticker']:
+                    stock['ticker_weight_in_type'] = stock_['ticker_weight_in_type']
+                    break
+        try:
+            stock['ticker_weight_in_all'] = stock['total_value_atu'] / types_sum[0]
+        except:
+            for stock_ in stocks:
+                if stock_['ticker'] == stock['ticker']:
+                    stock['ticker_weight_in_all'] = stock_['ticker_weight_in_all']
+                    break
+        return stock
+
+    def set_buy_sell_info(self, perc_ideal, stock_, stock_ref, types_sum, stocks):
+        total_invested = types_sum[0]
         stock_['buy_sell_indicator'] = "neutral"
+        stock_ = self.set_stock_weight(stock_, types_sum, stocks)
         if stock_ref is not None:
             try:
                 if stock_['perc_atu'] is None:
