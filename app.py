@@ -95,6 +95,7 @@ def get_investments():
         return consolidated, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}
+        print(e)
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
