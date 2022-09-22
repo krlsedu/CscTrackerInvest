@@ -200,6 +200,13 @@ class InvestmentHandler(Interceptor):
         else:
             return []
 
+    def get_sotcks_infos(self):
+        stocks_br = stock_handler.get_stocks(1)
+        bdrs = stock_handler.get_stocks(4)
+        fiis = fii_handler.get_fiis()
+        founds = stock_handler.get_founds()
+        return stocks_br, bdrs, fiis, founds
+
     def buy_sell_indication(self):
         perc_ideal = 5
         infos = self.get_stocks_consolidated()
@@ -211,10 +218,7 @@ class InvestmentHandler(Interceptor):
             total_invested += type_['total_value_atu']
 
         infos['total_invested'] = total_invested
-        stocks_br = stock_handler.get_stocks(1)
-        bdrs = stock_handler.get_stocks(4)
-        fiis = fii_handler.get_fiis()
-        founds = stock_handler.get_founds()
+        stocks_br, bdrs, fiis, founds = self.get_sotcks_infos()
         stock_ref = None
         for stock in stocks:
             stock_ = stock
