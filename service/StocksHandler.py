@@ -56,7 +56,7 @@ class StocksHandler(Interceptor):
         cursor.close()
         return stocks
 
-    def get_founds(self):
+    def get_founds(self, id):
         keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name', 'investment_type_id',
                 'url_infos']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
@@ -65,7 +65,7 @@ class StocksHandler(Interceptor):
                   f"from " \
                   f"    stocks " \
                   f"where " \
-                  f"    investment_type_id = 15  " \
+                  f"    investment_type_id = {id}  " \
                   f"order by " \
                   f"    name"
         cursor, cursor_ = generic_repository.execute_select(select_)

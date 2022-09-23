@@ -71,7 +71,7 @@ def get_bdrs():
 @app.route('/founds', methods=['GET'])
 @cross_origin()
 def get_founds():
-    stocks = stocks_handler.get_founds()
+    stocks = stocks_handler.get_founds(15)
     return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 

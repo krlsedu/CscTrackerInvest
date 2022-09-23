@@ -7,6 +7,7 @@ from flask import request
 from repository.HttpRepository import HttpRepository
 from repository.Repository import GenericRepository
 from service.FiiHandler import FiiHandler
+from service.FixedIncome import FixedIncome
 from service.Interceptor import Interceptor
 from service.StocksHandler import StocksHandler
 
@@ -14,6 +15,7 @@ generic_repository = GenericRepository()
 http_repository = HttpRepository()
 fii_handler = FiiHandler()
 stock_handler = StocksHandler()
+fixed_income_handler = FixedIncome()
 
 
 class InvestmentHandler(Interceptor):
@@ -32,7 +34,18 @@ class InvestmentHandler(Interceptor):
         coef = movement_type['coefficient']
         ticker_ = movement['ticker']
         if ticker_ is not None:
-            stock = self.get_stock(ticker_)
+            try:
+                fixed_icome = movement['fixed_icome']
+            except:
+                fixed_icome = "N"
+            if fixed_icome != "S":
+                stock = self.get_stock(ticker_)
+            else:
+                stock = fixed_income_handler.get_stock(movement)
+                price = fixed_income_handler.get_stock_price(movement)
+                movement['price'] = float(price['price'])
+
+            del movement['fixed_icome']
             movement['investment_id'] = stock['id']
             movement['investment_type_id'] = stock['investment_type_id']
             del movement['ticker']
@@ -138,9 +151,10 @@ class InvestmentHandler(Interceptor):
                 stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_)
 
-                # if investment_type['id'] == 15:
-                #     data_ant = (datetime.now() - timedelta(2)).strftime('%Y-%m-%d 23:59:59')
-                # else:
+                if investment_type['id'] == 16:
+                    stock_price = fixed_income_handler.get_stock_price_by_ticker(ticker_,
+                                                                                 (datetime.now()).strftime('%Y-%m-%d'))
+                    stock_['price'] = stock_price['price']
                 data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
                 price_ant = stock_handler.get_price(stock_['id'], data_ant)
 
@@ -169,7 +183,9 @@ class InvestmentHandler(Interceptor):
                                                       stock_consolidated['total_value_ant']
                 stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
                     stock_consolidated['total_value_invest']) - 1
-                stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + stock_['url_infos']
+                infos_ = stock_['url_infos']
+                if infos_ is not None:
+                    stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + infos_
 
                 stocks_consolidated.append(stock_consolidated)
 
@@ -204,8 +220,9 @@ class InvestmentHandler(Interceptor):
         stocks_br = stock_handler.get_stocks(1)
         bdrs = stock_handler.get_stocks(4)
         fiis = fii_handler.get_fiis()
-        founds = stock_handler.get_founds()
-        return stocks_br, bdrs, fiis, founds
+        founds = stock_handler.get_founds(15)
+        fix_income = stock_handler.get_founds(16)
+        return stocks_br, bdrs, fiis, founds, fix_income
 
     def buy_sell_indication(self):
         perc_ideal = 5
@@ -229,7 +246,7 @@ class InvestmentHandler(Interceptor):
         types_sum['types_count'] = types_count
         infos['total_invested'] = total_invested
 
-        stocks_br, bdrs, fiis, founds = self.get_sotcks_infos()
+        stocks_br, bdrs, fiis, founds, fix_income = self.get_sotcks_infos()
         stock_ref = None
         for stock in stocks:
             stock_ = stock
@@ -248,11 +265,15 @@ class InvestmentHandler(Interceptor):
         for stock in founds:
             stock_ref = stock
             self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
+        for stock in fix_income:
+            stock_ref = stock
+            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
         infos['stocks'] = stocks
         infos['stocks_br'] = stocks_br
         infos['bdrs'] = bdrs
         infos['fiis'] = fiis
         infos['founds'] = founds
+        infos['fix_income'] = fix_income
         return infos
 
     def get_ticket_info(self, ticker, stocks, atr):
