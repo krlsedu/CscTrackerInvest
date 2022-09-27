@@ -44,8 +44,11 @@ class InvestmentHandler(Interceptor):
                 stock = fixed_income_handler.get_stock(movement)
                 price = fixed_income_handler.get_stock_price(movement)
                 movement['price'] = float(price['price'])
-
-            del movement['fixed_icome']
+                movement['quantity'] = float(movement['quantity']) / movement['price']
+            try:
+                del movement['fixed_icome']
+            except:
+                pass
             movement['investment_id'] = stock['id']
             movement['investment_type_id'] = stock['investment_type_id']
             del movement['ticker']
@@ -152,8 +155,8 @@ class InvestmentHandler(Interceptor):
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_)
 
                 if investment_type['id'] == 16:
-                    stock_price = fixed_income_handler.get_stock_price_by_ticker(ticker_,
-                                                                                 (datetime.now()).strftime('%Y-%m-%d'))
+                    stock_price = fixed_income_handler \
+                        .get_stock_price_by_ticker(ticker_, (datetime.now()).strftime('%Y-%m-%d 23:59:59'))
                     stock_['price'] = stock_price['price']
                 data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
                 price_ant = stock_handler.get_price(stock_['id'], data_ant)
@@ -225,7 +228,6 @@ class InvestmentHandler(Interceptor):
         return stocks_br, bdrs, fiis, founds, fix_income
 
     def buy_sell_indication(self):
-        perc_ideal = 5
         infos = self.get_stocks_consolidated()
 
         stocks = infos['stocks']
@@ -251,23 +253,23 @@ class InvestmentHandler(Interceptor):
         for stock in stocks:
             stock_ = stock
             types_sum['types_count'][stock['investment_type_id']] += 1
-            stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br, founds)
-            self.set_buy_sell_info(perc_ideal, stock_, stock_ref, types_sum, stocks)
+            stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br, founds, fix_income)
+            self.set_buy_sell_info(stock_, stock_ref, types_sum, stocks)
         for stock in stocks_br:
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
         for stock in bdrs:
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
         for stock in fiis:
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
         for stock in founds:
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
         for stock in fix_income:
             stock_ref = stock
-            self.set_buy_sell_info(perc_ideal, stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
         infos['stocks'] = stocks
         infos['stocks_br'] = stocks_br
         infos['bdrs'] = bdrs
@@ -294,6 +296,11 @@ class InvestmentHandler(Interceptor):
             stock['segment_weight_in_type'] = 0
 
         try:
+            stock['type_weight'] = types_sum[stock['investment_type_id']] / types_sum[0]
+        except:
+            stock['type_weight'] = 0
+
+        try:
             stock['ticker_weight_in_type'] = stock['total_value_atu'] / types_sum[stock['investment_type_id']]
         except:
             for stock_ in stocks:
@@ -309,20 +316,66 @@ class InvestmentHandler(Interceptor):
                     break
         return stock
 
-    def set_buy_sell_info(self, perc_ideal, stock_, stock_ref, types_sum, stocks):
-        total_invested = types_sum[0]
+    def get_ideal_value(self, value_tot, perc_atu, perc_ideal):
+        if perc_atu > perc_ideal:
+            valor_atu = value_tot * perc_atu
+            novo_total = value_tot - (valor_atu - value_tot * (perc_ideal))
+            novo_valor = value_tot * (perc_ideal)
+            sell = valor_atu - novo_valor
+            val_atu = novo_valor
+            while sell > 0.01:
+                novo_total = novo_total - (val_atu - novo_total * (perc_ideal))
+                novo_valor = novo_total * (perc_ideal)
+                sell = val_atu - novo_valor
+                val_atu = novo_valor
+            return novo_valor
+        else:
+            v_atu = value_tot * perc_atu
+            new_tot = value_tot + (value_tot * (perc_ideal) - v_atu)
+            new_val = value_tot * (perc_ideal)
+            buy = new_val - v_atu
+            val_atu = new_val
+            while buy > 0.01:
+                new_tot = new_tot + (new_tot * (perc_ideal) - val_atu)
+                new_val = new_tot * (perc_ideal)
+                buy = new_val - val_atu
+                val_atu = new_val
+
+            return new_val
+
+    def set_buy_sell_info(self, stock_, stock_ref, types_sum, stocks):
+        ticker_perc_max_ideal = 0.05
+        type_ivest_id_ = stock_['investment_type_id']
+        if type_ivest_id_ == 16:
+            total_invested = types_sum[0]
+            perc_type_ideal = 0.50
+            ticker_perc_max_ideal = 1
+        elif type_ivest_id_ == 15:
+            total_invested = types_sum[0]
+            perc_type_ideal = 0.15
+            ticker_perc_max_ideal = 1
+        elif type_ivest_id_ == 2:
+            total_invested = types_sum[type_ivest_id_]
+            perc_type_ideal = 0.25
+        else:
+            total_invested = types_sum[1] + types_sum[4]
+            perc_type_ideal = 0.10
+
+        perc_refer = 'ticker_weight_in_all'
         stock_['buy_sell_indicator'] = "neutral"
         stock_ = self.set_stock_weight(stock_, types_sum, stocks)
+        type_weight = stock_['type_weight']
+        type_value_ideal = self.get_ideal_value(types_sum[0], type_weight, perc_type_ideal)
         try:
-            max_rank_to_buy = 20 - types_sum['types_count'][stock_['investment_type_id']]
+            max_rank_to_buy = 20 - types_sum['types_count'][type_ivest_id_]
         except:
             max_rank_to_buy = 20
         if stock_ref is not None:
             try:
-                if stock_['perc_atu'] is None:
-                    stock_['perc_atu'] = self.get_ticket_info(stock_['ticker'], stocks, 'perc_atu')
+                if stock_[perc_refer] is None:
+                    stock_[perc_refer] = self.get_ticket_info(stock_['ticker'], stocks, perc_refer)
             except:
-                stock_['perc_atu'] = self.get_ticket_info(stock_['ticker'], stocks, 'perc_atu')
+                stock_[perc_refer] = self.get_ticket_info(stock_['ticker'], stocks, perc_refer)
             try:
                 if stock_['gain'] is None:
                     stock_['gain'] = self.get_ticket_info(stock_['ticker'], stocks, 'gain')
@@ -334,21 +387,30 @@ class InvestmentHandler(Interceptor):
                 if stock_['gain'] > 0.2:
                     stock_['buy_sell_indicator'] = "sell"
                     stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
-                elif stock_['perc_atu'] > perc_ideal:
-                    sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
-                    stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec) \
-                                               + " -> Rank: " + str(rank)
+                elif stock_[perc_refer] > ticker_perc_max_ideal or type_weight > perc_type_ideal:
+                    if stock_[perc_refer] > ticker_perc_max_ideal:
+                        sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_[perc_refer])
+                        stock_['recommendation'] = "Sell to equilibrate the ticker " + self.to_brl(sell_rec) \
+                                                   + " -> Rank: " + str(rank)
+                    elif type_weight > perc_type_ideal:
+                        sell_rec = self.get_tot_to_sell(types_sum[0], perc_type_ideal, type_weight)
+                        stock_['recommendation'] = "Sell to equilibrate the type " + self.to_brl(sell_rec) \
+                                                   + " -> Rank: " + str(rank)
                 else:
-                    stock_['buy_sell_indicator'] = "buy"
-                    sell_rec = self.get_tot_to_buy(total_invested, perc_ideal, stock_['perc_atu'])
-                    stock_['recommendation'] = "Buy to equilibrate " + self.to_brl(sell_rec) \
-                                               + " -> Rank: " + str(rank)
+                    if type_weight < perc_type_ideal:
+                        stock_['buy_sell_indicator'] = "buy"
+                        sell_rec = self.get_tot_to_buy(types_sum[0], ticker_perc_max_ideal, stock_[perc_refer])
+                        if types_sum[type_ivest_id_] + sell_rec > type_value_ideal:
+                            sell_rec = sell_rec - (types_sum[type_ivest_id_] + sell_rec - type_value_ideal)
+                        stock_['recommendation'] = "Max buy recommendation for the ticker " + self.to_brl(sell_rec) \
+                                                   + " -> Rank: " + str(rank)
+
             elif rank > 40:
                 stock_['buy_sell_indicator'] = "sell"
                 if stock_['gain'] > 0.2:
                     stock_['buy_sell_indicator'] = "sell"
                     stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
-                elif stock_['perc_atu'] > 0:
+                elif stock_['ticker_weight_in_all'] > 0:
                     if rank > 10000:
                         tiker_prefix = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
                         stock_['recommendation'] = "Sell all - another " + tiker_prefix + " ticker best ranked "
@@ -366,8 +428,8 @@ class InvestmentHandler(Interceptor):
                 if stock_['gain'] > 0.2:
                     stock_['buy_sell_indicator'] = "sell"
                     stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
-                elif stock_['perc_atu'] > perc_ideal:
-                    sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
+                elif stock_[perc_refer] > ticker_perc_max_ideal:
+                    sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_[perc_refer])
                     stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec) \
                                                + " -> Rank: " + str(rank)
                 else:
@@ -377,13 +439,13 @@ class InvestmentHandler(Interceptor):
             if stock_['gain'] > 0.2:
                 stock_['buy_sell_indicator'] = "sell"
                 stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['gain'])
-            elif stock_['perc_atu'] > perc_ideal:
-                sell_rec = self.get_tot_to_sell(total_invested, perc_ideal, stock_['perc_atu'])
+            elif stock_[perc_refer] > ticker_perc_max_ideal:
+                sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_['perc_atu'])
                 stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec)
             else:
                 stock_['recommendation'] = "Sell all - strategy"
 
-    def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br, founds):
+    def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br, founds, fix_income):
         if stock['investment_type_id'] == 1:
             for obj_ in stocks_br:
                 if obj_['ticker'] == stock['ticker']:
@@ -404,34 +466,41 @@ class InvestmentHandler(Interceptor):
                 if obj_['ticker'] == stock['ticker']:
                     stock_ref = obj_
                     break
+        elif stock['investment_type_id'] == 16:
+            for obj_ in fix_income:
+                if obj_['ticker'] == stock['ticker']:
+                    stock_ref = obj_
+                    break
         return stock_ref
 
     def get_tot_to_sell(self, total, perc_ideal, perc_atu):
-        valor_atu = total * perc_atu / 100
-        novo_total = total - (valor_atu - total * (perc_ideal / 100))
-        novo_valor = total * (perc_ideal / 100)
+        valor_atu = total * perc_atu
+        # novo_total = total - (valor_atu - total * (perc_ideal / 100))
+        novo_valor = total * perc_ideal
         sell = valor_atu - novo_valor
-        val_atu = novo_valor
-        while sell > 0.01:
-            novo_total = novo_total - (val_atu - novo_total * (perc_ideal / 100))
-            novo_valor = novo_total * (perc_ideal / 100)
-            sell = val_atu - novo_valor
-            val_atu = novo_valor
-        return valor_atu - novo_valor
+        return sell
+        # val_atu = novo_valor
+        # while sell > 0.01:
+        #     novo_total = novo_total - (val_atu - novo_total * (perc_ideal / 100))
+        #     novo_valor = novo_total * (perc_ideal / 100)
+        #     sell = val_atu - novo_valor
+        #     val_atu = novo_valor
+        # return valor_atu - novo_valor
 
     def get_tot_to_buy(self, total, perc_ideal, perc_atu):
-        v_atu = total * perc_atu / 100
-        new_tot = total + (total * (perc_ideal / 100) - v_atu)
-        new_val = total * (perc_ideal / 100)
+        v_atu = total * perc_atu
+        # new_tot = total + (total * (perc_ideal / 100) - v_atu)
+        new_val = total * perc_ideal
         buy = new_val - v_atu
-        val_atu = new_val
-        while buy > 0.01:
-            new_tot = new_tot + (new_tot * (perc_ideal / 100) - val_atu)
-            new_val = new_tot * (perc_ideal / 100)
-            buy = new_val - val_atu
-            val_atu = new_val
-
-        return new_val - v_atu
+        return buy
+        # val_atu = new_val
+        # while buy > 0.01:
+        #     new_tot = new_tot + (new_tot * (perc_ideal / 100) - val_atu)
+        #     new_val = new_tot * (perc_ideal / 100)
+        #     buy = new_val - val_atu
+        #     val_atu = new_val
+        #
+        # return new_val - v_atu
 
     def to_brl(self, value):
         a = '{:,.2f}'.format(float(value))
