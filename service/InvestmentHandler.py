@@ -156,7 +156,7 @@ class InvestmentHandler(Interceptor):
 
                 if investment_type['id'] == 16:
                     stock_price = fixed_income_handler \
-                        .get_stock_price_by_ticker(ticker_, (datetime.now()).strftime('%Y-%m-%d 23:59:59'))
+                        .get_stock_price_by_ticker(ticker_, (datetime.now()).strftime('%Y-%m-%d'))
                     stock_['price'] = stock_price['price']
                 data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
                 price_ant = stock_handler.get_price(stock_['id'], data_ant)

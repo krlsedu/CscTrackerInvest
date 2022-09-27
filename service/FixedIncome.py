@@ -76,12 +76,13 @@ class FixedIncome(Interceptor):
         if date_price < date_movement:
             date_range = pandas.date_range(date_price, date_movement)
             for date in date_range:
-                tx_val = self.get_tax_price(stock_['tx_type'], date)
-                lt = float(tx_val['value'] / 100)
-                lq = ((1 + lt) ** (1 / 365))
-                price = price * lq
-                stock_['price'] = float(price)
-                self.add_stock_price(stock_, date.strftime('%Y-%m-%d'))
+                if date.strftime('%Y-%m-%d') > date_price:
+                    tx_val = self.get_tax_price(stock_['tx_type'], date)
+                    lt = float(tx_val['value'] / 100)
+                    lq = ((1 + lt) ** (1 / 365))
+                    price = price * lq
+                    stock_['price'] = float(price)
+                    self.add_stock_price(stock_, date.strftime('%Y-%m-%d'))
         else:
             return price_obj
         generic_repository.update("stocks", ["id"], stock_)
