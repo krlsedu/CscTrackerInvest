@@ -129,9 +129,10 @@ class InvestmentHandler(Interceptor):
         generic_repository.insert("stocks", investment_tp)
         return investment_tp['ticker']
 
-    def get_stocks(self):
-        user_id = generic_repository.get_user()['id']
-        args = request.args
+    def get_stocks(self, args=None, headers=None):
+        user_id = generic_repository.get_user(headers)['id']
+        if args is None:
+            args = request.args
         filters = ["user_id"]
         values = {"user_id": user_id}
         for key in args:
@@ -139,8 +140,8 @@ class InvestmentHandler(Interceptor):
             values[key] = args[key]
         return generic_repository.get_objects("user_stocks", filters, values)
 
-    def get_stocks_consolidated(self):
-        stocks = self.get_stocks()
+    def get_stocks_consolidated(self, args=None, headers=None):
+        stocks = self.get_stocks(args, headers)
         if stocks.__len__() > 0:
             stocks_consolidated = []
             segments = []
@@ -219,16 +220,16 @@ class InvestmentHandler(Interceptor):
         else:
             return []
 
-    def get_sotcks_infos(self):
-        stocks_br = stock_handler.get_stocks(1)
-        bdrs = stock_handler.get_stocks(4)
-        fiis = fii_handler.get_fiis()
+    def get_sotcks_infos(self, args=None, headers=None):
+        stocks_br = stock_handler.get_stocks(1, args)
+        bdrs = stock_handler.get_stocks(4, args)
+        fiis = fii_handler.get_fiis(args)
         founds = stock_handler.get_founds(15)
         fix_income = stock_handler.get_founds(16)
         return stocks_br, bdrs, fiis, founds, fix_income
 
-    def buy_sell_indication(self):
-        infos = self.get_stocks_consolidated()
+    def buy_sell_indication(self, args=None, headers=None):
+        infos = self.get_stocks_consolidated(args, headers)
 
         stocks = infos['stocks']
         type_grouped = infos['type_grouped']
@@ -248,7 +249,7 @@ class InvestmentHandler(Interceptor):
         types_sum['types_count'] = types_count
         infos['total_invested'] = total_invested
 
-        stocks_br, bdrs, fiis, founds, fix_income = self.get_sotcks_infos()
+        stocks_br, bdrs, fiis, founds, fix_income = self.get_sotcks_infos(args, headers)
         stock_ref = None
         for stock in stocks:
             stock_ = stock

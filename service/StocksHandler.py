@@ -10,8 +10,10 @@ class StocksHandler(Interceptor):
     def __init__(self):
         super().__init__()
 
-    def get_stocks(self, type_):
-        liquidez = request.args.get('avg_liquidity')
+    def get_stocks(self, type_, args=None):
+        if args is None:
+            args = request.args
+        liquidez = args.get('avg_liquidity')
         if liquidez is None:
             liquidez = 500000
         else:

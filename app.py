@@ -19,6 +19,7 @@ from service.AttStocks import AttStocks
 from service.FiiHandler import FiiHandler
 from service.InvestmentHandler import InvestmentHandler
 from service.LoadInfo import load_fiis_info
+from service.RequestHandler import RequestHandler
 from service.StocksHandler import StocksHandler
 from service.Utils import Utils
 
@@ -39,6 +40,7 @@ investment_handler = InvestmentHandler()
 att_stocks = AttStocks()
 stocks_handler = StocksHandler()
 utils = Utils()
+request_handler = RequestHandler()
 
 
 class Encoder(json.JSONEncoder):
@@ -91,7 +93,29 @@ def add_movements():
 @cross_origin()
 def get_investments():
     try:
-        consolidated = investment_handler.buy_sell_indication()
+        headers = request.headers
+        args = request.args
+        threading.Thread(target=get_investments_tr, args=(args, headers,)).start()
+        message = {
+            'text': 'Investments update requested',
+            'status': 'ok'
+        }
+        return message, {'Content-Type': 'application/json'}
+    except Exception as e:
+        message = {
+            'text': 'Investments update requested',
+            'status': 'error',
+            'error': str(e)
+        }
+        print(e)
+        return json.dumps(message), 500, {'Content-Type': 'application/json'}
+
+
+def get_investments_tr(args, headers):
+    try:
+        consolidated = investment_handler.buy_sell_indication(args, headers)
+        consolidated = json.dumps(consolidated, cls=Encoder, ensure_ascii=False)
+        request_handler.inform_to_client(consolidated, "investments", headers)
         return consolidated, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}
@@ -134,6 +158,7 @@ def att_full():  # put application's code here
     print("att_full requested")
     threading.Thread(target=att_stocks.att_full()).start()
     return "{}", 200, {'Content-Type': 'application/json'}
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

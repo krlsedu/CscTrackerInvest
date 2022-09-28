@@ -222,7 +222,11 @@ class GenericRepository(Interceptor):
         data['user_id'] = user['id']
         return data
 
-    def get_user(self):
-        user_name = request.headers.get('userName')
+    def get_user(self, headers=None):
+        if headers is None:
+            headers = request.headers
+        user_name = headers.get('userName')
+        if user_name is None:
+            user_name = 'krlsedu@gmail.com'
         user = self.get_object('users', ['email'], {'email': user_name})
         return user

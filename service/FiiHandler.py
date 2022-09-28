@@ -38,13 +38,15 @@ class FiiHandler(Interceptor):
                 print(fii)
                 pass
 
-    def get_fiis(self):
+    def get_fiis(self, args=None):
         load_fiis = load_fiis_info()
         values_fiis = {}
         for fii in load_fiis:
             values_fiis[fii['ticker']] = fii['price']
 
-        liquidez = request.args.get('metric')
+        if args is None:
+            args = request.args
+        liquidez = args.get('metric')
         if liquidez is None:
             liquidez = 500000
         else:
