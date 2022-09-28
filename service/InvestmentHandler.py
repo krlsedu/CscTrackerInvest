@@ -178,13 +178,33 @@ class InvestmentHandler(Interceptor):
                 stock_consolidated['quantity'] = stock['quantity']
                 stock_consolidated['avg_price'] = stock['avg_price']
                 stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
-                stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
+                if stock_consolidated['investment_type_id'] == 16 or stock_consolidated['investment_type_id'] == 15:
+                    perc_gain = float(stock_consolidated['price_atu']) - float(stock_consolidated['avg_price'])
+
+                    stock_consolidated['total_value_atu'] = float(stock_consolidated['total_value_invest']) + \
+                                                            float(
+                                                                perc_gain * float(
+                                                                    stock_consolidated['total_value_invest']))
+
+                    if price_ant is not None:
+                        perc_gain_ant = float(price_ant['price']) - float(stock_consolidated['avg_price'])
+
+                        stock_consolidated['total_value_ant'] = float(stock_consolidated['total_value_invest']) + \
+                                                                float(
+                                                                    perc_gain_ant * float(stock_consolidated[
+                                                                                                'total_value_invest']))
+
+                        stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
+                        stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
+                                                          stock_consolidated['total_value_ant']
+                else:
+                    stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
                                                         float(stock_consolidated['price_atu'])
-                if price_ant is not None:
-                    stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
-                    stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
-                    stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
-                                                      stock_consolidated['total_value_ant']
+                    if price_ant is not None:
+                        stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
+                        stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
+                        stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
+                                                          stock_consolidated['total_value_ant']
                 stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
                     stock_consolidated['total_value_invest']) - 1
                 infos_ = stock_['url_infos']
