@@ -113,6 +113,7 @@ def get_investments():
 
 def get_investments_tr(args, headers):
     try:
+        request_handler.inform_to_client("Investments refresh requested", "investments", headers)
         consolidated = investment_handler.buy_sell_indication(args, headers)
         consolidated = json.dumps(consolidated, cls=Encoder, ensure_ascii=False)
         request_handler.inform_to_client(consolidated, "investments", headers)
