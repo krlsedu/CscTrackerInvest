@@ -171,38 +171,7 @@ class AttStocks(Interceptor):
             print(f"Atualizando a {type}: {stock['ticker']}")
             stock_ = investment_handler.get_stock(stock['ticker'])
             stock['price'] = stock_['price']
-        if stock_['prices_imported'] == 'N' or daily:
-            if type == 'fundo' and not daily:
-                company_ = stock['url_infos']
-                company_ = company_.replace('/fundos-de-investimento/', '')
-                infos = http_repository.get_prices_fundos(company_)
-                datas = infos['data']['chart']['category']
-                values = infos['data']['chart']['series']['fundo']
-                for i in range(len(datas)):
-                    data = datas[i]
-                    data = datetime.strptime(data, '%d/%m/%y').strftime("%Y-%m-%d")
-                    price = values[i]['price']
-                    stock_['price'] = price
-                    investment_handler.add_stock_price(stock_, data)
-                pass
-            else:
-                infos = http_repository.get_prices(stock_['ticker'], type, daily)
-                for info in infos:
-                    prices = info['prices']
-                    for price in prices:
-                        stock_['price'] = price['price']
-                        if daily:
-                            investment_handler.add_stock_price(stock_,
-                                                               datetime.strptime(price['date'], '%d/%m/%y %H:%M')
-                                                               .strftime("%Y-%m-%d %H:%M"))
-                        else:
-                            investment_handler.add_stock_price(stock_,
-                                                               datetime.strptime(price['date'], '%d/%m/%y %H:%M')
-                                                               .strftime("%Y-%m-%d"))
-            stock_['prices_imported'] = 'S'
-            stock_['price'] = stock['price']
-            generic_repository.update("stocks", ["ticker"], stock_)
-        print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+        investment_handler.att_stock_price_new(daily, stock, stock_, type)
 
     def update_stock(self, stock):
         if stock['investment_type'] == 2:

@@ -169,6 +169,20 @@ class InvestmentHandler(Interceptor):
                 stock_consolidated['price_atu'] = stock_['price']
                 if price_ant is not None:
                     stock_consolidated['price_ant'] = price_ant['price']
+                    dt_prc_ant = price_ant['date_value'].strftime('%Y-%m-%d')
+                    dt_prc_req = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
+                    if dt_prc_ant < \
+                            dt_prc_req:
+                        if investment_type['id'] == 15:
+                            self.att_stock_price_new(False, stock_, stock_, "fundo", "1", True, dt_prc_ant)
+                        elif investment_type['id'] == 1:
+                            self.att_stock_price_new(False, stock_, stock_, "acao", "1", True, dt_prc_ant)
+                        elif investment_type['id'] == 2:
+                            self.att_stock_price_new(False, stock_, stock_, "fii", "1", True, dt_prc_ant)
+                        elif investment_type['id'] == 4:
+                            self.att_stock_price_new(False, stock_, stock_, "bdr", "1", True, dt_prc_ant)
+                        pass
+
                 stock_consolidated['segment'] = stock_['segment']
                 segment['segment'] = stock_['segment']
 
@@ -192,14 +206,14 @@ class InvestmentHandler(Interceptor):
                         stock_consolidated['total_value_ant'] = float(stock_consolidated['total_value_invest']) + \
                                                                 float(
                                                                     perc_gain_ant * float(stock_consolidated[
-                                                                                                'total_value_invest']))
+                                                                                              'total_value_invest']))
 
                         stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
                         stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                           stock_consolidated['total_value_ant']
                 else:
                     stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
-                                                        float(stock_consolidated['price_atu'])
+                                                            float(stock_consolidated['price_atu'])
                     if price_ant is not None:
                         stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
                         stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
@@ -563,3 +577,49 @@ class InvestmentHandler(Interceptor):
         stocks = self.calc_ranks(stocks)
         for stock in stocks:
             generic_repository.update("stocks", ["id"], stock)
+
+    def att_stock_price_new(self, daily, stock, stock_, type, price_type="4", reimport=False, data_=None):
+        if stock_['prices_imported'] == 'N' or daily or reimport:
+            if type == 'fundo' and not daily or type == 'fundo' and reimport:
+                company_ = stock_['url_infos']
+                company_ = company_.replace('/fundos-de-investimento/', '')
+                infos = http_repository.get_prices_fundos(company_, price_type == "1")
+                datas = infos['data']['chart']['category']
+                values = infos['data']['chart']['series']['fundo']
+                for i in range(len(datas)):
+                    data = datas[i]
+                    data = datetime.strptime(data, '%d/%m/%y').strftime("%Y-%m-%d")
+                    can_insert = True
+                    if data_ is not None:
+                        can_insert = data > data_
+                    price = values[i]['price']
+                    stock_['price'] = price
+                    if can_insert:
+                        self.add_stock_price(stock_, data)
+                pass
+            else:
+                infos = http_repository.get_prices(stock_['ticker'], type, daily, price_type)
+                for info in infos:
+                    prices = info['prices']
+                    for price in prices:
+                        stock_['price'] = price['price']
+                        if daily:
+                            data = datetime.strptime(price['date'], '%d/%m/%y %H:%M').strftime("%Y-%m-%d %H:%M")
+                            can_insert = True
+                            if data_ is not None:
+                                can_insert = data > data_
+                            if can_insert:
+                                self.add_stock_price(stock_,
+                                                     data)
+                        else:
+                            data = datetime.strptime(price['date'], '%d/%m/%y %H:%M').strftime("%Y-%m-%d")
+                            can_insert = True
+                            if data_ is not None:
+                                can_insert = data > data_
+                            if can_insert:
+                                self.add_stock_price(stock_,
+                                                     data)
+            stock_['prices_imported'] = 'S'
+            stock_['price'] = stock['price']
+            generic_repository.update("stocks", ["ticker"], stock_)
+        print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
