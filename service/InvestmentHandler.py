@@ -162,6 +162,8 @@ class InvestmentHandler(Interceptor):
                         stock_['price'] = stock_price['price']
                     data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
                     price_ant = stock_handler.get_price(stock_['id'], data_ant)
+                    data_atu = datetime.now().strftime('%Y-%m-%d 23:59:59')
+                    price_atu = stock_handler.get_price(stock_['id'], data_atu)
 
                     segment['type'] = investment_type['name']
                     segment['type_id'] = investment_type['id']
@@ -170,6 +172,7 @@ class InvestmentHandler(Interceptor):
                     stock_consolidated['price_atu'] = stock_['price']
                     if price_ant is not None:
                         stock_consolidated['price_ant'] = price_ant['price']
+                        stock_consolidated['price_atu'] = price_atu['price']
                         dt_prc_ant = price_ant['date_value'].strftime('%Y-%m-%d')
                         dt_prc_req = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
                         if dt_prc_ant < \
