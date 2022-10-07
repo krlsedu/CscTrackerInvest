@@ -146,96 +146,97 @@ class InvestmentHandler(Interceptor):
             stocks_consolidated = []
             segments = []
             for stock in stocks:
-                segment = {}
-                stock_consolidated = {}
-                investment_type = generic_repository.get_object("stocks", ["id"],
-                                                                {"id": stock['investment_id']})
-                ticker_ = investment_type['ticker']
-                stock['ticker'] = ticker_
-                stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
-                stock_, investment_type = http_repository.get_values_by_ticker(stock_)
+                if stock['quantity'] > 0:
+                    segment = {}
+                    stock_consolidated = {}
+                    investment_type = generic_repository.get_object("stocks", ["id"],
+                                                                    {"id": stock['investment_id']})
+                    ticker_ = investment_type['ticker']
+                    stock['ticker'] = ticker_
+                    stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
+                    stock_, investment_type = http_repository.get_values_by_ticker(stock_)
 
-                if investment_type['id'] == 16:
-                    stock_price = fixed_income_handler \
-                        .get_stock_price_by_ticker(ticker_, (datetime.now()).strftime('%Y-%m-%d'))
-                    stock_['price'] = stock_price['price']
-                data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
-                price_ant = stock_handler.get_price(stock_['id'], data_ant)
+                    if investment_type['id'] == 16:
+                        stock_price = fixed_income_handler \
+                            .get_stock_price_by_ticker(ticker_, (datetime.now()).strftime('%Y-%m-%d'))
+                        stock_['price'] = stock_price['price']
+                    data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
+                    price_ant = stock_handler.get_price(stock_['id'], data_ant)
 
-                segment['type'] = investment_type['name']
-                segment['type_id'] = investment_type['id']
-                stock_consolidated['type'] = investment_type['name']
+                    segment['type'] = investment_type['name']
+                    segment['type_id'] = investment_type['id']
+                    stock_consolidated['type'] = investment_type['name']
 
-                stock_consolidated['price_atu'] = stock_['price']
-                if price_ant is not None:
-                    stock_consolidated['price_ant'] = price_ant['price']
-                    dt_prc_ant = price_ant['date_value'].strftime('%Y-%m-%d')
-                    dt_prc_req = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
-                    if dt_prc_ant < \
-                            dt_prc_req:
-                        if investment_type['id'] == 15:
-                            self.att_stock_price_new(False, stock_, stock_, "fundo", "1", True, dt_prc_ant)
-                        elif investment_type['id'] == 1:
-                            self.att_stock_price_new(False, stock_, stock_, "acao", "1", True, dt_prc_ant)
-                        elif investment_type['id'] == 2:
-                            self.att_stock_price_new(False, stock_, stock_, "fii", "1", True, dt_prc_ant)
-                        elif investment_type['id'] == 4:
-                            self.att_stock_price_new(False, stock_, stock_, "bdr", "1", True, dt_prc_ant)
-                        pass
-
-                stock_consolidated['segment'] = stock_['segment']
-                segment['segment'] = stock_['segment']
-
-                stock_consolidated['ticker'] = ticker_
-                stock_consolidated['investment_type_id'] = investment_type['id']
-                stock_consolidated['name'] = stock_['name']
-                stock_consolidated['quantity'] = stock['quantity']
-                stock_consolidated['avg_price'] = stock['avg_price']
-                stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
-                if stock_consolidated['investment_type_id'] == 16 or stock_consolidated['investment_type_id'] == 15:
-                    perc_gain = float(stock_consolidated['price_atu']) - float(stock_consolidated['avg_price'])
-
-                    stock_consolidated['total_value_atu'] = float(stock_consolidated['total_value_invest']) + \
-                                                            float(
-                                                                perc_gain * float(
-                                                                    stock_consolidated['total_value_invest']))
-
+                    stock_consolidated['price_atu'] = stock_['price']
                     if price_ant is not None:
-                        perc_gain_ant = float(price_ant['price']) - float(stock_consolidated['avg_price'])
+                        stock_consolidated['price_ant'] = price_ant['price']
+                        dt_prc_ant = price_ant['date_value'].strftime('%Y-%m-%d')
+                        dt_prc_req = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
+                        if dt_prc_ant < \
+                                dt_prc_req:
+                            if investment_type['id'] == 15:
+                                self.att_stock_price_new(False, stock_, stock_, "fundo", "1", True, dt_prc_ant)
+                            elif investment_type['id'] == 1:
+                                self.att_stock_price_new(False, stock_, stock_, "acao", "1", True, dt_prc_ant)
+                            elif investment_type['id'] == 2:
+                                self.att_stock_price_new(False, stock_, stock_, "fii", "1", True, dt_prc_ant)
+                            elif investment_type['id'] == 4:
+                                self.att_stock_price_new(False, stock_, stock_, "bdr", "1", True, dt_prc_ant)
+                            pass
 
-                        stock_consolidated['total_value_ant'] = float(stock_consolidated['total_value_invest']) + \
+                    stock_consolidated['segment'] = stock_['segment']
+                    segment['segment'] = stock_['segment']
+
+                    stock_consolidated['ticker'] = ticker_
+                    stock_consolidated['investment_type_id'] = investment_type['id']
+                    stock_consolidated['name'] = stock_['name']
+                    stock_consolidated['quantity'] = stock['quantity']
+                    stock_consolidated['avg_price'] = stock['avg_price']
+                    stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
+                    if stock_consolidated['investment_type_id'] == 16 or stock_consolidated['investment_type_id'] == 15:
+                        perc_gain = float(stock_consolidated['price_atu']) - float(stock_consolidated['avg_price'])
+
+                        stock_consolidated['total_value_atu'] = float(stock_consolidated['total_value_invest']) + \
                                                                 float(
-                                                                    perc_gain_ant * float(stock_consolidated[
-                                                                                              'total_value_invest']))
+                                                                    perc_gain * float(
+                                                                        stock_consolidated['total_value_invest']))
 
-                        stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
-                        stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
-                                                          stock_consolidated['total_value_ant']
-                else:
-                    stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
-                                                            float(stock_consolidated['price_atu'])
+                        if price_ant is not None:
+                            perc_gain_ant = float(price_ant['price']) - float(stock_consolidated['avg_price'])
+
+                            stock_consolidated['total_value_ant'] = float(stock_consolidated['total_value_invest']) + \
+                                                                    float(
+                                                                        perc_gain_ant * float(stock_consolidated[
+                                                                                                  'total_value_invest']))
+
+                            stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
+                            stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
+                                                              stock_consolidated['total_value_ant']
+                    else:
+                        stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
+                                                                float(stock_consolidated['price_atu'])
+                        if price_ant is not None:
+                            stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
+                            stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
+                            stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
+                                                              stock_consolidated['total_value_ant']
+                    stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
+                        stock_consolidated['total_value_invest']) - 1
+                    infos_ = stock_['url_infos']
+                    if infos_ is not None:
+                        stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + infos_
+
+                    stocks_consolidated.append(stock_consolidated)
+
+                    segment['quantity'] = float(stock['quantity'])
+                    segment['total_value_invest'] = stock_consolidated['total_value_invest']
+                    segment['total_value_atu'] = stock_consolidated['total_value_atu']
+
                     if price_ant is not None:
-                        stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
-                        stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
-                        stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
-                                                          stock_consolidated['total_value_ant']
-                stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
-                    stock_consolidated['total_value_invest']) - 1
-                infos_ = stock_['url_infos']
-                if infos_ is not None:
-                    stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + infos_
+                        segment['total_value_ant'] = stock_consolidated['total_value_ant']
+                        segment['variation'] = stock_consolidated['variation']
 
-                stocks_consolidated.append(stock_consolidated)
-
-                segment['quantity'] = float(stock['quantity'])
-                segment['total_value_invest'] = stock_consolidated['total_value_invest']
-                segment['total_value_atu'] = stock_consolidated['total_value_atu']
-
-                if price_ant is not None:
-                    segment['total_value_ant'] = stock_consolidated['total_value_ant']
-                    segment['variation'] = stock_consolidated['variation']
-
-                segments.append(segment)
+                    segments.append(segment)
 
             df_stocks = self.sum_data(stocks_consolidated)
             df_grouped_segment = self.sum_data(segments)
