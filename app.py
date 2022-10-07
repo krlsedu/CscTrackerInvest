@@ -80,13 +80,17 @@ def get_founds():
 @app.route('/investment-movement', methods=['POST'])
 @cross_origin()
 def add_movement():
-    return json.dumps(investment_handler.add_movement(request.get_json())), 200, {'Content-Type': 'application/json'}
+    dumps = json.dumps(investment_handler.add_movement(request.get_json()))
+    get_investments()
+    return dumps, 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/investment-movements', methods=['POST'])
 @cross_origin()
 def add_movements():
-    return json.dumps(investment_handler.add_movements(request.get_json())), 200, {'Content-Type': 'application/json'}
+    dumps = json.dumps(investment_handler.add_movements(request.get_json()))
+    get_investments()
+    return dumps, 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/investments', methods=['GET'])

@@ -10,6 +10,14 @@ class StocksHandler(Interceptor):
     def __init__(self):
         super().__init__()
 
+    def get_stocks_basic(self):
+        select_ = f"select " \
+                  f"    ticker, ticker || ' - ' || name as name " \
+                  f"from " \
+                  f"    stocks "
+        return generic_repository.get_objects_from_sql(select_)
+
+
     def get_stocks(self, type_, args=None):
         if args is None:
             args = request.args

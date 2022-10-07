@@ -268,6 +268,7 @@ class InvestmentHandler(Interceptor):
 
     def buy_sell_indication(self, args=None, headers=None):
         infos = self.get_stocks_consolidated(args, headers)
+        infos['stocks_names'] = stock_handler.get_stocks_basic()
 
         stocks = infos['stocks']
         type_grouped = infos['type_grouped']
