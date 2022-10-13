@@ -117,10 +117,11 @@ def get_investments():
 
 def get_investments_tr(args, headers):
     try:
-        request_handler.inform_to_client("Investments refresh requested", "investments", headers)
+        request_handler.inform_to_client("Investments refresh requested", "investments", headers,
+                                         "Investments refresh requested")
         consolidated = investment_handler.buy_sell_indication(args, headers)
         consolidated = json.dumps(consolidated, cls=Encoder, ensure_ascii=False)
-        request_handler.inform_to_client(consolidated, "investments", headers)
+        request_handler.inform_to_client(consolidated, "investments", headers, "Investments refresh completed")
         return consolidated, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}

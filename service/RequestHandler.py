@@ -8,9 +8,10 @@ class RequestHandler(Interceptor):
     def __init__(self):
         super().__init__()
 
-    def inform_to_client(self, json, operation, headers):
+    def inform_to_client(self, json, operation, headers, msg=None):
         message = {
-            "text": json,
+            "text": msg,
+            "data": json,
             "app": "CscTrackerInvest",
             "operation": operation
         }
