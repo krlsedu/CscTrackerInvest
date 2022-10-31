@@ -5,20 +5,16 @@
 import decimal
 import json
 import threading
-import time
-from datetime import datetime, timedelta
 
 import psycopg2
-import schedule as schedule
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
-
 from prometheus_flask_exporter import PrometheusMetrics
 
 from service.AttStocks import AttStocks
+from service.DividendHandler import DividendHandler
 from service.FiiHandler import FiiHandler
 from service.InvestmentHandler import InvestmentHandler
-from service.LoadInfo import load_fiis_info
 from service.RequestHandler import RequestHandler
 from service.StocksHandler import StocksHandler
 from service.Utils import Utils
@@ -29,18 +25,13 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 metrics = PrometheusMetrics(app, group_by='endpoint')
 
-conn = psycopg2.connect(
-    host="postgres",
-    database="postgres",
-    user="postgres",
-    password="postgres")
-
 fii_handler = FiiHandler()
 investment_handler = InvestmentHandler()
 att_stocks = AttStocks()
 stocks_handler = StocksHandler()
 utils = Utils()
 request_handler = RequestHandler()
+dividend_handler = DividendHandler()
 
 
 class Encoder(json.JSONEncoder):
@@ -89,6 +80,14 @@ def add_movement():
 @cross_origin()
 def add_movements():
     dumps = json.dumps(investment_handler.add_movements(request.get_json()))
+    get_investments()
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/dividend-movement', methods=['POST'])
+@cross_origin()
+def add_dividend():
+    dumps = json.dumps(dividend_handler.add_dividend(request.headers))
     get_investments()
     return dumps, 200, {'Content-Type': 'application/json'}
 

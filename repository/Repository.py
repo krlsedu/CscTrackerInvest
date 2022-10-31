@@ -159,6 +159,17 @@ class GenericRepository(Interceptor):
         cursor.close()
         return objects
 
+    def get_filters(self, args=None, headers=None):
+        user_id = self.get_user(headers)['id']
+        if args is None:
+            args = request.args
+        filters = ["user_id"]
+        values = {"user_id": user_id}
+        for key in args:
+            filters.append(key)
+            values[key] = args[key]
+        return filters, values
+
     def get_objects_from_sql(self, sql):
         cursor, cursor_ = self.execute_select(sql)
         col_names = cursor.description

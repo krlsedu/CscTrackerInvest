@@ -6,6 +6,7 @@ from flask import request
 
 from repository.HttpRepository import HttpRepository
 from repository.Repository import GenericRepository
+from service.DividendHandler import DividendHandler
 from service.FiiHandler import FiiHandler
 from service.FixedIncome import FixedIncome
 from service.Interceptor import Interceptor
@@ -16,6 +17,7 @@ http_repository = HttpRepository()
 fii_handler = FiiHandler()
 stock_handler = StocksHandler()
 fixed_income_handler = FixedIncome()
+dividend_handler = DividendHandler()
 
 
 class InvestmentHandler(Interceptor):
@@ -229,6 +231,8 @@ class InvestmentHandler(Interceptor):
                     if infos_ is not None:
                         stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + infos_
 
+                    stock_consolidated = self.add_dividend_info(stock_consolidated, headers)
+
                     stocks_consolidated.append(stock_consolidated)
 
                     segment['quantity'] = float(stock['quantity'])
@@ -317,6 +321,16 @@ class InvestmentHandler(Interceptor):
         infos['founds'] = founds
         infos['fix_income'] = fix_income
         return infos
+
+    def add_dividend_info(self, stock, headers=None):
+        stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
+        arg = {'investment_id': stock_['id']}
+        dividends = dividend_handler.get_dividends(arg, headers)
+        stock['dividends'] = 0
+        for dividend in dividends:
+            stock['dividends'] += float(dividend['quantity'] * dividend['value_per_quote'])
+        stock['dyr'] = stock['dividends'] / stock['total_value_atu'] * 100
+        return stock
 
     def get_ticket_info(self, ticker, stocks, atr):
         for stock in stocks:
