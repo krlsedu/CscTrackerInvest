@@ -329,7 +329,7 @@ class InvestmentHandler(Interceptor):
         stock['dividends'] = 0
         for dividend in dividends:
             stock['dividends'] += float(dividend['quantity'] * dividend['value_per_quote'])
-        stock['dyr'] = stock['dividends'] / stock['total_value_atu'] * 100
+        stock['dyr'] = stock['dividends'] / stock['total_value_atu']
         return stock
 
     def get_ticket_info(self, ticker, stocks, atr):
