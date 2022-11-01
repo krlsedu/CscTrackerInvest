@@ -358,7 +358,7 @@ class InvestmentHandler(Interceptor):
             stock['daily_gain'] = stock['gain'] / float(avg_days)
             stock['daily_dyr'] = stock['dyr'] / float(avg_days)
             stock['daily_total_gain'] = stock['daily_dyr'] + stock['daily_gain']
-            stock['monthly_gain'] = (stock['daily_gain'] + float(1)) ** float(30) - float(1)
+            stock['monthly_gain'] = (stock['daily_total_gain'] + float(1)) ** float(30) - float(1)
 
         stock['total_gain'] = stock['dyr'] + stock['gain']
         return stock
