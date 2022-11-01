@@ -91,7 +91,7 @@ class InvestmentHandler(Interceptor):
             "investment_id": movement['investment_id'],
             "value": profit_loss_value,
             "quantity": movement['quantity'],
-            "date_sell": movement['date_value']
+            "date_sell": movement['date']
         }
         generic_repository.insert("profit_loss", profit_loss)
 
