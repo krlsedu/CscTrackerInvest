@@ -471,7 +471,7 @@ class InvestmentHandler(Interceptor):
             rank = stock_ref['rank']
             if rank <= max_rank_to_buy:
                 if stock_['monthly_gain'] > great_gain:
-                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['buy_sell_indicator'] = "great-gain"
                     stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
                         stock_['monthly_gain']) + " -> Rank: " + str(rank)
                 elif stock_[perc_refer] > ticker_perc_max_ideal or type_weight > perc_type_ideal:
@@ -495,7 +495,7 @@ class InvestmentHandler(Interceptor):
             elif rank > 40:
                 stock_['buy_sell_indicator'] = "sell"
                 if stock_['monthly_gain'] > great_gain:
-                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['buy_sell_indicator'] = "great-gain"
                     stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
                         stock_['monthly_gain']) + " -> Rank: " + str(rank)
                 elif stock_['ticker_weight_in_all'] > 0:
@@ -514,7 +514,7 @@ class InvestmentHandler(Interceptor):
                                                    + " -> Rank: " + str(rank)
             else:
                 if stock_['monthly_gain'] > great_gain:
-                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['buy_sell_indicator'] = "great-gain"
                     stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
                         stock_['monthly_gain']) + " -> Rank: " + str(rank)
                 elif stock_[perc_refer] > ticker_perc_max_ideal:
@@ -526,8 +526,9 @@ class InvestmentHandler(Interceptor):
 
         else:
             if stock_['monthly_gain'] > great_gain:
-                stock_['buy_sell_indicator'] = "sell"
-                stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(stock_['monthly_gain'])
+                stock_['buy_sell_indicator'] = "great-gain"
+                stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
+                    stock_['monthly_gain'])
             elif stock_[perc_refer] > ticker_perc_max_ideal:
                 sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_['perc_atu'])
                 stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec)
