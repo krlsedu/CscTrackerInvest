@@ -11,8 +11,6 @@ def load_fiis_info():
 
     response = requests.request("GET", url, headers=headers, data=payload)
 
-    print(response)
-
     return response.json()
 
 

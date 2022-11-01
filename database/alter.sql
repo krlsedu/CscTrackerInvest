@@ -117,3 +117,20 @@ create table dividends
         constraint dividend_types_id_fk references dividend_types (id),
     last_update     timestamp not null default now()
 );
+
+
+-- 2022-11-01
+
+
+create table profit_loss
+(
+    id              serial primary key,
+    investment_id   int       not null,
+    date_sell    date      not null default now(),
+    quantity        numeric   not null,
+    value numeric   not null,
+    user_id       bigint  not null
+        constraint user_stocks_user_id_fk
+            references users,
+    last_update     timestamp not null default now()
+);

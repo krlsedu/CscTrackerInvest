@@ -67,7 +67,10 @@ class InvestmentHandler(Interceptor):
                     else:
                         avg_price = 0
                     user_stock['quantity'] = quantity
+                    profit_loss_value = float(movement['price']) - float(user_stock['avg_price'])
                     user_stock['avg_price'] = avg_price
+                    if movement['movement_type'] == 2:
+                        self.add_profit_loss(profit_loss_value, movement)
                     generic_repository.update("user_stocks", ["user_id", "investment_id"], user_stock)
                 generic_repository.insert("user_stocks_movements", movement)
             else:
@@ -81,6 +84,16 @@ class InvestmentHandler(Interceptor):
         except Exception as e:
             print(e)
             return {"status": "error", "message": e}
+
+    def add_profit_loss(self, profit_loss_value, movement):
+        profit_loss = {
+            "user_id": movement['user_id'],
+            "investment_id": movement['investment_id'],
+            "value": profit_loss_value,
+            "quantity": movement['quantity'],
+            "date_sell": movement['date_value']
+        }
+        generic_repository.insert("profit_loss", profit_loss)
 
     def get_stock(self, ticker_):
         ticker_ = ticker_.upper()
@@ -432,7 +445,7 @@ class InvestmentHandler(Interceptor):
 
     def set_buy_sell_info(self, stock_, stock_ref, types_sum, stocks):
         ticker_perc_max_ideal = 0.05
-        great_gain = 0.05
+        great_gain = 0.07
         type_ivest_id_ = stock_['investment_type_id']
         if type_ivest_id_ == 16:
             total_invested = types_sum[0]
