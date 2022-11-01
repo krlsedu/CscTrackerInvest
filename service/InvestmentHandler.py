@@ -86,12 +86,16 @@ class InvestmentHandler(Interceptor):
             return {"status": "error", "message": e}
 
     def add_profit_loss(self, profit_loss_value, movement):
+        try:
+            date = movement['date']
+        except:
+            date = datetime.now().strftime('%Y-%m-%d')
         profit_loss = {
             "user_id": movement['user_id'],
             "investment_id": movement['investment_id'],
             "value": profit_loss_value,
             "quantity": movement['quantity'],
-            "date_sell": movement['date']
+            "date_sell": date
         }
         generic_repository.insert("profit_loss", profit_loss)
 
