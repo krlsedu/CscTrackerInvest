@@ -10,13 +10,19 @@ from service.Interceptor import Interceptor
 
 generic_repository = GenericRepository()
 
+headers = {
+    'Cookie': '_adasys=5aeb049b-bdfc-4984-9901-bf3539f577b1',
+    'User-Agent': 'PostmanRuntime/7.26.8'
+}
+
 
 class HttpRepository(Interceptor):
     def __init__(self):
         super().__init__()
 
     def get_stock_type(self, ticker):
-        response = requests.get('https://statusinvest.com.br/home/mainsearchquery', params={"q": ticker})
+        response = requests.get('https://statusinvest.com.br/home/mainsearchquery', params={"q": ticker},
+                                headers=headers)
         return response.json()
 
     def get_firt_stock_type(self, ticker):
@@ -24,7 +30,7 @@ class HttpRepository(Interceptor):
 
     def get_page_text(self, ticker):
         stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker})
-        page = requests.get(f"https://statusinvest.com.br{stock['url_infos']}")
+        page = requests.get(f"https://statusinvest.com.br{stock['url_infos']}", headers=headers)
         return page.text
 
     def get_values_by_ticker(self, stock, force=False):
@@ -168,20 +174,20 @@ class HttpRepository(Interceptor):
     def get_prices(self, ticker, type, daily=False, price_type="4"):
         if daily:
             response = requests.get(f'https://statusinvest.com.br/{type}/tickerprice?type=-1&currences%5B%5D=1',
-                                    params={"ticker": ticker})
+                                    params={"ticker": ticker}, headers=headers)
         else:
             response = requests.get(
                 f'https://statusinvest.com.br/{type}/tickerprice?type={price_type}&currences%5B%5D=1',
-                params={"ticker": ticker})
+                params={"ticker": ticker}, headers=headers)
         return response.json()
 
     def get_prices_fundos(self, ticker, month=False):
         if month:
             response = requests.get(f'https://statusinvest.com.br/fundoinvestimento/profitabilitymainresult?'
                                     f'nome_clean={ticker}'
-                                    f'&time=1')
+                                    f'&time=1', headers=headers)
         else:
             response = requests.get(f'https://statusinvest.com.br/fundoinvestimento/profitabilitymainresult?'
                                     f'nome_clean={ticker}'
-                                    f'&time=6')
+                                    f'&time=6', headers=headers)
         return response.json()
