@@ -232,6 +232,7 @@ class InvestmentHandler(Interceptor):
                         stock_consolidated['url_statusinvest'] = "https://statusinvest.com.br" + infos_
 
                     stock_consolidated = self.add_dividend_info(stock_consolidated, headers)
+                    stock_consolidated = self.add_daily_gain(stock_consolidated, headers)
 
                     stocks_consolidated.append(stock_consolidated)
 
@@ -330,6 +331,36 @@ class InvestmentHandler(Interceptor):
         for dividend in dividends:
             stock['dividends'] += float(dividend['quantity'] * dividend['value_per_quote'])
         stock['dyr'] = stock['dividends'] / stock['total_value_atu']
+        return stock
+
+    def add_daily_gain(self, stock, headers=None):
+        stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
+        filter_ = {
+            'investment_id': stock_['id'],
+            'user_id': generic_repository.get_user(headers)['id'],
+            'movement_type': 1
+        }
+        movements = generic_repository.get_objects("user_stocks_movements",
+                                                   ["investment_id", "user_id", "movement_type"], filter_)
+        days = 0
+        for movement in movements:
+            delta = datetime.now() - movement['date']
+            days += delta.days * movement['quantity']
+        filter_['movement_type'] = 2
+        movements = generic_repository.get_objects("user_stocks_movements",
+                                                   ["investment_id", "user_id", "movement_type"], filter_)
+        for movement in movements:
+            delta = datetime.now() - movement['date']
+            days -= delta.days * movement['quantity']
+
+        avg_days = days / stock['quantity']
+        if avg_days >= 1:
+            stock['daily_gain'] = stock['gain'] / float(avg_days)
+            stock['daily_dyr'] = stock['dyr'] / float(avg_days)
+            stock['daily_total_gain'] = stock['daily_dyr'] + stock['daily_gain']
+            stock['monthly_gain'] = (stock['daily_gain'] + float(1)) ** float(30) - float(1)
+
+        stock['total_gain'] = stock['dyr'] + stock['gain']
         return stock
 
     def get_ticket_info(self, ticker, stocks, atr):
