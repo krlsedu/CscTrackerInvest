@@ -338,6 +338,7 @@ class InvestmentHandler(Interceptor):
         infos['fiis'] = fiis
         infos['founds'] = founds
         infos['fix_income'] = fix_income
+        infos['types_count'] = types_sum['types_count']
         return infos
 
     def add_dividend_info(self, stock, headers=None):
