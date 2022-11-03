@@ -43,7 +43,7 @@ def load_acoes_info():
         'User-Agent': 'PostmanRuntime/7.26.8'
     }
 
-    response = requests.request("GET", url, headers=headers, )
+    response = requests.request("GET", url, headers=headers)
     return response.json()
 
 

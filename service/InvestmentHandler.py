@@ -471,10 +471,7 @@ class InvestmentHandler(Interceptor):
         stock_ = self.set_stock_weight(stock_, types_sum, stocks)
         type_weight = stock_['type_weight']
         type_value_ideal = self.get_ideal_value(types_sum[0], type_weight, perc_type_ideal)
-        try:
-            max_rank_to_buy = 20 - types_sum['types_count'][type_ivest_id_]
-        except:
-            max_rank_to_buy = 20
+        max_rank_to_buy = 20
         if stock_ref is not None:
             try:
                 if stock_[perc_refer] is None:
