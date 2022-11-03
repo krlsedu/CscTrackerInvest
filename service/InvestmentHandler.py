@@ -345,7 +345,7 @@ class InvestmentHandler(Interceptor):
         infos['types_count'] = types_sum['types_count']
         infos = self.add_total_dividends_info(infos, headers)
         infos = self.add_total_daily_gain(infos, headers)
-        infos = self.add_total_profit_loss_info(infos, headers)
+        infos = self.add_total_profit_loss_info(infos, headers, args)
         return infos
 
     def add_dividend_info(self, stock, headers=None):
