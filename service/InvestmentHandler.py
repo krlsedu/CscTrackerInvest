@@ -254,7 +254,7 @@ class InvestmentHandler(Interceptor):
                     stocks_consolidated.append(stock_consolidated)
 
                     segment['quantity'] = float(stock['quantity'])
-                    segment['total_value_invest'] = stock_consolidated['total_value_invest']
+                    segment['total_value_invest'] = float(stock_consolidated['total_value_invest'])
                     segment['total_value_atu'] = stock_consolidated['total_value_atu']
 
                     if price_ant is not None:
@@ -294,22 +294,26 @@ class InvestmentHandler(Interceptor):
 
         stocks = infos['stocks']
         type_grouped = infos['type_grouped']
-        total_invested = 0
+        total_value_atu = 0
+        total_value_invest = 0
         types_sum = {}
         types_count = {}
         for type_ in type_grouped:
-            total_invested += type_['total_value_atu']
+            total_value_atu += type_['total_value_atu']
+            total_value_invest += type_['total_value_invest']
             types_sum[type_['type_id']] = type_['total_value_atu']
             types_count[type_['type_id']] = 0
         segment_grouped = infos['segments_grouped']
         segments_sum = {}
         for segment in segment_grouped:
             segments_sum[segment['segment']] = segment['total_value_atu']
-        types_sum[0] = total_invested
+        types_sum[0] = total_value_atu
         types_sum['segment_sum'] = segments_sum
         types_sum['types_count'] = types_count
-        infos['total_invested'] = total_invested
-
+        infos['total_invested'] = total_value_atu
+        infos['resume'] = {}
+        infos['resume']['total_value_atu'] = total_value_atu
+        infos['resume']['total_value_invest'] = total_value_invest
         stocks_br, bdrs, fiis, founds, fix_income = self.get_sotcks_infos(args, headers)
         stock_ref = None
         for stock in stocks:
@@ -339,6 +343,9 @@ class InvestmentHandler(Interceptor):
         infos['founds'] = founds
         infos['fix_income'] = fix_income
         infos['types_count'] = types_sum['types_count']
+        infos = self.add_total_dividends_info(infos, headers)
+        infos = self.add_total_daily_gain(infos, headers)
+        infos = self.add_total_profit_loss_info(infos, headers)
         return infos
 
     def add_dividend_info(self, stock, headers=None):
@@ -350,6 +357,60 @@ class InvestmentHandler(Interceptor):
             stock['dividends'] += float(dividend['quantity'] * dividend['value_per_quote'])
         stock['dyr'] = stock['dividends'] / stock['total_value_atu']
         return stock
+
+    def add_total_dividends_info(self, infos, headers=None):
+        arg = {}
+        dividends = dividend_handler.get_dividends(arg, headers)
+        infos['resume']['total_dividends'] = 0
+        for dividend in dividends:
+            infos['resume']['total_dividends'] += float(dividend['quantity'] * dividend['value_per_quote'])
+        infos['resume']['dyr'] = infos['resume']['total_dividends'] / infos['resume']['total_value_atu']
+        return infos
+
+    def add_total_profit_loss_info(self, infos, headers=None, args=None):
+        filters, values = generic_repository.get_filters(args, headers)
+        profit_loss = generic_repository.get_objects("profit_loss", filters, values)
+        infos['resume']['profits'] = 0
+        infos['resume']['losses'] = 0
+        for pl in profit_loss:
+            if pl['value'] > 0:
+                infos['resume']['profits'] += float(pl['value'] * pl['quantity'])
+            else:
+                infos['resume']['losses'] += float(pl['value'] * pl['quantity'])
+        return infos
+
+    def add_total_daily_gain(self, infos, headers=None):
+        filter_ = {
+            'user_id': generic_repository.get_user(headers)['id'],
+            'movement_type': 1
+        }
+        movements = generic_repository.get_objects("user_stocks_movements",
+                                                   ["user_id", "movement_type"], filter_)
+        days = 0
+        quantity = 0
+        for movement in movements:
+            delta = datetime.now() - movement['date']
+            days += delta.days * movement['quantity']
+            quantity += movement['quantity']
+        filter_['movement_type'] = 2
+        movements = generic_repository.get_objects("user_stocks_movements",
+                                                   ["user_id", "movement_type"], filter_)
+        for movement in movements:
+            delta = datetime.now() - movement['date']
+            days -= delta.days * movement['quantity']
+            quantity -= movement['quantity']
+
+        avg_days = days / quantity
+        if avg_days is None or avg_days < 1:
+            avg_days = 1
+        infos['resume']['gain'] = infos['resume']['total_value_atu'] / infos['resume']['total_value_invest'] - 1
+        infos['resume']['daily_gain'] = infos['resume']['gain'] / float(avg_days)
+        infos['resume']['daily_dyr'] = infos['resume']['dyr'] / float(avg_days)
+        infos['resume']['daily_total_gain'] = infos['resume']['daily_dyr'] + infos['resume']['daily_gain']
+        infos['resume']['monthly_gain'] = (infos['resume']['daily_total_gain'] + float(1)) ** float(30) - float(1)
+
+        infos['resume']['total_gain'] = infos['resume']['dyr'] + infos['resume']['gain']
+        return infos
 
     def add_daily_gain(self, stock, headers=None):
         stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
