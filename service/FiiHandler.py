@@ -15,6 +15,12 @@ from service.LoadInfo import load_fiis_info
 generic_repository = GenericRepository()
 http_repository = HttpRepository()
 
+headers = {
+    'Cookie': '_adasys=5aeb049b-bdfc-4984-9901-bf3539f577b1',
+    'User-Agent': 'PostmanRuntime/7.26.8'
+}
+
+
 class FiiHandler(Interceptor):
     def __init__(self):
         super().__init__()
@@ -23,7 +29,7 @@ class FiiHandler(Interceptor):
         for fii in fiis:
             ticker = fii['ticker']
             url = requests.get(
-                f"https://statusinvest.com.br/fundos-imobiliarios/{ticker}")
+                f"https://statusinvest.com.br/fundos-imobiliarios/{ticker}", headers=headers)
             nav = BeautifulSoup(url.text, "html5lib")
 
             self.get_all_values_fiis(nav, fii)

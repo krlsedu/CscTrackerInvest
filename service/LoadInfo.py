@@ -48,6 +48,11 @@ def load_acoes_info():
 
 
 def load_bdr_info():
-    acoes_response = requests.get(
-        "https://statusinvest.com.br/bdr/companiesnavigation?page=1&size=10000")
-    return acoes_response.json()
+    url = "https://statusinvest.com.br/bdr/companiesnavigation?page=1&size=10000"
+    headers = {
+        'Cookie': '_adasys=5aeb049b-bdfc-4984-9901-bf3539f577b1',
+        'User-Agent': 'PostmanRuntime/7.26.8'
+    }
+
+    response = requests.request("GET", url, headers=headers)
+    return response.json()
