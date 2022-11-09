@@ -49,15 +49,22 @@ class HttpRepository(Interceptor):
 
     def get_user(self, headers=None):
         user_name = headers.get('userName')
-        user = self.get_object('users', ['email'], {'email': user_name}, headers)
-        return user
+        try:
+            user = self.get_object('users', ['email'], {'email': user_name}, headers)
+            return user
+        except Exception as e:
+            raise e
 
     def get_object(self, table, keys=[], data={}, headers=None):
         params = {}
         for key in keys:
             params[key] = data[key]
-        response = requests.get(url_repository + 'single/' + table, params=params, headers=headers)
-        return response.json()
+        try:
+            response = requests.get(url_repository + 'single/' + table, params=params, headers=headers)
+            if response.status_code < 200 or response.status_code > 299:
+                return response.json()
+        except Exception as e:
+            raise e
 
     def get_objects(self, table, keys=[], data={}, headers=None):
         params = {}
