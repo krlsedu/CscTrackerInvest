@@ -105,7 +105,6 @@ class HttpRepository(Interceptor):
         try:
             time = datetime.now().timestamp() * 1000 - stock['last_update'].timestamp() * 1000
             queue = time > (1000 * 60 * 15) or time < 0
-            queue =True
         except Exception as e:
             queue = True
         if queue or force:
