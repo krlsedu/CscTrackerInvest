@@ -11,7 +11,7 @@ headers_sti = {
     'User-Agent': 'PostmanRuntime/7.26.8'
 }
 
-url_repository = 'http://127.0.0.1:5015/'
+url_repository = 'http://repository:5000/'
 
 
 class HttpRepository(Interceptor):
