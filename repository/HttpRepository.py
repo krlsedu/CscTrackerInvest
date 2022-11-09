@@ -62,7 +62,8 @@ class HttpRepository(Interceptor):
         try:
             response = requests.get(url_repository + 'single/' + table, params=params, headers=headers)
             if response.status_code < 200 or response.status_code > 299:
-                return response.json()
+                raise Exception(f'Error getting data: {response.text}')
+            return response.json()
         except Exception as e:
             raise e
 
