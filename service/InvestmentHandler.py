@@ -2,17 +2,14 @@ import json
 from datetime import timedelta, datetime, timezone
 
 import pandas as pd
-from flask import request
 
 from repository.HttpRepository import HttpRepository
-from repository.Repository import GenericRepository
 from service.DividendHandler import DividendHandler
 from service.FiiHandler import FiiHandler
 from service.FixedIncome import FixedIncome
 from service.Interceptor import Interceptor
 from service.StocksHandler import StocksHandler
 
-generic_repository = GenericRepository()
 http_repository = HttpRepository()
 fii_handler = FiiHandler()
 stock_handler = StocksHandler()
@@ -24,15 +21,15 @@ class InvestmentHandler(Interceptor):
     def __init__(self):
         super().__init__()
 
-    def add_movements(self, movements):
+    def add_movements(self, movements, headers=None):
         msgs = []
         for movement in movements:
-            msgs.append(self.add_movement(movement))
+            msgs.append(self.add_movement(movement, headers))
         return msgs
 
-    def add_movement(self, movement):
-        movement = generic_repository.add_user_id(movement)
-        movement_type = generic_repository.get_object("movement_types", ["id"], {"id": movement['movement_type']})
+    def add_movement(self, movement, headers=None):
+        movement = http_repository.add_user_id(movement, headers)
+        movement_type = http_repository.get_object("movement_types", ["id"], {"id": movement['movement_type']}, headers)
         coef = movement_type['coefficient']
         ticker_ = movement['ticker']
         if ticker_ is not None:
@@ -41,10 +38,10 @@ class InvestmentHandler(Interceptor):
             except:
                 fixed_icome = "N"
             if fixed_icome != "S":
-                stock = self.get_stock(ticker_)
+                stock = self.get_stock(ticker_, headers)
             else:
-                stock = fixed_income_handler.get_stock(movement)
-                price = fixed_income_handler.get_stock_price(movement)
+                stock = fixed_income_handler.get_stock(movement, headers)
+                price = fixed_income_handler.get_stock_price(movement, headers)
                 movement['price'] = float(price['price'])
                 movement['quantity'] = float(movement['quantity']) / movement['price']
             try:
@@ -55,9 +52,9 @@ class InvestmentHandler(Interceptor):
             movement['investment_type_id'] = stock['investment_type_id']
             del movement['ticker']
         try:
-            if generic_repository.exist_by_key("user_stocks", ["investment_id"], movement):
+            if http_repository.exist_by_key("user_stocks", ["investment_id"], movement, headers):
                 if movement_type['to_balance']:
-                    user_stock = generic_repository.get_object("user_stocks", ["investment_id"], movement)
+                    user_stock = http_repository.get_object("user_stocks", ["investment_id"], movement, headers)
                     total_value = float(user_stock['quantity'] * user_stock['avg_price'])
 
                     total_value += movement['quantity'] * movement['price'] * float(coef)
@@ -70,22 +67,22 @@ class InvestmentHandler(Interceptor):
                     profit_loss_value = float(movement['price']) - float(user_stock['avg_price'])
                     user_stock['avg_price'] = avg_price
                     if movement['movement_type'] == 2:
-                        self.add_profit_loss(profit_loss_value, movement)
-                    generic_repository.update("user_stocks", ["user_id", "investment_id"], user_stock)
-                generic_repository.insert("user_stocks_movements", movement)
+                        self.add_profit_loss(profit_loss_value, movement, headers)
+                    http_repository.update("user_stocks", ["user_id", "investment_id"], user_stock, headers)
+                http_repository.insert("user_stocks_movements", movement, headers)
             else:
                 if movement_type['to_balance']:
                     stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
                              'avg_price': movement['price'], 'user_id': movement['user_id'],
                              'investment_type_id': movement['investment_type_id']}
-                    generic_repository.insert("user_stocks", stock)
-                generic_repository.insert("user_stocks_movements", movement)
+                    http_repository.insert("user_stocks", stock, headers)
+                http_repository.insert("user_stocks_movements", movement, headers)
             return {"status": "success", "message": "Movement added"}
         except Exception as e:
             print(e)
             return {"status": "error", "message": e}
 
-    def add_profit_loss(self, profit_loss_value, movement):
+    def add_profit_loss(self, profit_loss_value, movement, headers=None):
         try:
             date = movement['date']
         except:
@@ -97,20 +94,20 @@ class InvestmentHandler(Interceptor):
             "quantity": movement['quantity'],
             "date_sell": date
         }
-        generic_repository.insert("profit_loss", profit_loss)
+        http_repository.insert("profit_loss", profit_loss, headers)
 
-    def get_stock(self, ticker_):
+    def get_stock(self, ticker_, headers=None):
         ticker_ = ticker_.upper()
-        stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker_})
+        stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
         try:
             stock['id']
         except Exception as e:
-            ticker_ = self.add_stock(ticker_)
-            stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker_})
-            self.add_stock_price(stock)
+            ticker_ = self.add_stock(ticker_, headers)
+            stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
+            self.add_stock_price(stock, headers)
         return stock
 
-    def add_stock_price(self, stock, date=None):
+    def add_stock_price(self, stock, headers=None, date=None):
         stock_price = {
             "investment_id": stock['id'],
             "price": stock['price'],
@@ -119,22 +116,22 @@ class InvestmentHandler(Interceptor):
             stock_price['date_value'] = date
 
         data_ant = datetime.now().astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-        price_ant = stock_handler.get_price(stock['id'], data_ant)
+        price_ant = stock_handler.get_price(stock['id'], data_ant, headers)
         if price_ant is not None:
             if float(price_ant['price']) != float(stock['price']):
-                self.add_price(stock_price)
+                self.add_price(stock_price, headers)
         else:
-            self.add_price(stock_price)
+            self.add_price(stock_price, headers)
 
-    def add_price(self, price):
+    def add_price(self, price, headers=None):
         try:
             if price['price'] is not None:
-                generic_repository.insert("stocks_prices", price)
+                http_repository.insert("stocks_prices", price, headers)
         except Exception as e:
             print(e)
 
-    def add_stock(self, ticker_):
-        stock = http_repository.get_firt_stock_type(ticker_)
+    def add_stock(self, ticker_, headers=None):
+        stock = http_repository.get_firt_stock_type(ticker_, headers)
         type_ = stock['type']
         code_ = stock['code']
         if type_ == 15:
@@ -145,19 +142,16 @@ class InvestmentHandler(Interceptor):
             'investment_type_id': type_,
             'url_infos': stock['url']
         }
-        generic_repository.insert("stocks", investment_tp)
+        http_repository.insert("stocks", investment_tp, headers)
         return investment_tp['ticker']
 
     def get_stocks(self, args=None, headers=None):
-        user_id = generic_repository.get_user(headers)['id']
-        if args is None:
-            args = request.args
-        filters = ["user_id"]
-        values = {"user_id": user_id}
+        filters = []
+        values = {}
         for key in args:
             filters.append(key)
             values[key] = args[key]
-        return generic_repository.get_objects("user_stocks", filters, values)
+        return http_repository.get_objects("user_stocks", filters, values, headers)
 
     def get_stocks_consolidated(self, args=None, headers=None):
         stocks = self.get_stocks(args, headers)
@@ -168,21 +162,21 @@ class InvestmentHandler(Interceptor):
                 if stock['quantity'] > 0:
                     segment = {}
                     stock_consolidated = {}
-                    investment_type = generic_repository.get_object("stocks", ["id"],
-                                                                    {"id": stock['investment_id']})
+                    investment_type = http_repository.get_object("stocks", ["id"], {"id": stock['investment_id']},
+                                                                 headers)
                     ticker_ = investment_type['ticker']
                     stock['ticker'] = ticker_
-                    stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
-                    stock_, investment_type = http_repository.get_values_by_ticker(stock_)
+                    stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
+                    stock_, investment_type = http_repository.get_values_by_ticker(stock_, False, headers)
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \
-                            .get_stock_price_by_ticker(ticker_, (datetime.now()).strftime('%Y-%m-%d'))
+                            .get_stock_price_by_ticker(ticker_, headers, (datetime.now()).strftime('%Y-%m-%d'))
                         stock_['price'] = stock_price['price']
                     data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
-                    price_ant = stock_handler.get_price(stock_['id'], data_ant)
+                    price_ant = stock_handler.get_price(stock_['id'], data_ant, headers)
                     data_atu = datetime.now().strftime('%Y-%m-%d 23:59:59')
-                    price_atu = stock_handler.get_price(stock_['id'], data_atu)
+                    price_atu = stock_handler.get_price(stock_['id'], data_atu, headers)
 
                     segment['type'] = investment_type['name']
                     segment['type_id'] = investment_type['id']
@@ -192,18 +186,19 @@ class InvestmentHandler(Interceptor):
                     if price_ant is not None:
                         stock_consolidated['price_ant'] = price_ant['price']
                         stock_consolidated['price_atu'] = price_atu['price']
-                        dt_prc_ant = price_ant['date_value'].strftime('%Y-%m-%d')
+                        dt_prc_ant = datetime.strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f') \
+                            .strftime('%Y-%m-%d')
                         dt_prc_req = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
                         if dt_prc_ant < \
                                 dt_prc_req:
                             if investment_type['id'] == 15:
-                                self.att_stock_price_new(False, stock_, stock_, "fundo", "1", True, dt_prc_ant)
+                                self.att_stock_price_new(headers, False, stock_, stock_, "fundo", "1", True, dt_prc_ant)
                             elif investment_type['id'] == 1:
-                                self.att_stock_price_new(False, stock_, stock_, "acao", "1", True, dt_prc_ant)
+                                self.att_stock_price_new(headers, False, stock_, stock_, "acao", "1", True, dt_prc_ant)
                             elif investment_type['id'] == 2:
-                                self.att_stock_price_new(False, stock_, stock_, "fii", "1", True, dt_prc_ant)
+                                self.att_stock_price_new(headers, False, stock_, stock_, "fii", "1", True, dt_prc_ant)
                             elif investment_type['id'] == 4:
-                                self.att_stock_price_new(False, stock_, stock_, "bdr", "1", True, dt_prc_ant)
+                                self.att_stock_price_new(headers, False, stock_, stock_, "bdr", "1", True, dt_prc_ant)
                             pass
 
                     stock_consolidated['segment'] = stock_['segment']
@@ -231,7 +226,8 @@ class InvestmentHandler(Interceptor):
                                                                         perc_gain_ant * float(stock_consolidated[
                                                                                                   'total_value_invest']))
 
-                            stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
+                            stock_consolidated['value_ant_date'] = datetime \
+                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
                     else:
@@ -239,7 +235,8 @@ class InvestmentHandler(Interceptor):
                                                                 float(stock_consolidated['price_atu'])
                         if price_ant is not None:
                             stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
-                            stock_consolidated['value_ant_date'] = price_ant['date_value'].strftime('%Y-%m-%d')
+                            stock_consolidated['value_ant_date'] = datetime \
+                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
                     stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
@@ -281,16 +278,16 @@ class InvestmentHandler(Interceptor):
             return []
 
     def get_sotcks_infos(self, args=None, headers=None):
-        stocks_br = stock_handler.get_stocks(1, args)
-        bdrs = stock_handler.get_stocks(4, args)
-        fiis = fii_handler.get_fiis(args)
-        founds = stock_handler.get_founds(15)
-        fix_income = stock_handler.get_founds(16)
+        stocks_br = stock_handler.get_stocks(1, headers, args)
+        bdrs = stock_handler.get_stocks(4, headers, args)
+        fiis = fii_handler.get_fiis(headers, args)
+        founds = stock_handler.get_founds(15, headers)
+        fix_income = stock_handler.get_founds(16, headers)
         return stocks_br, bdrs, fiis, founds, fix_income
 
     def buy_sell_indication(self, args=None, headers=None):
         infos = self.get_stocks_consolidated(args, headers)
-        infos['stocks_names'] = stock_handler.get_stocks_basic()
+        infos['stocks_names'] = stock_handler.get_stocks_basic(headers)
 
         stocks = infos['stocks']
         type_grouped = infos['type_grouped']
@@ -349,7 +346,7 @@ class InvestmentHandler(Interceptor):
         return infos
 
     def add_dividend_info(self, stock, headers=None):
-        stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
+        stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
         arg = {'investment_id': stock_['id']}
         dividends = dividend_handler.get_dividends(arg, headers)
         stock['dividends'] = 0
@@ -368,8 +365,8 @@ class InvestmentHandler(Interceptor):
         return infos
 
     def add_total_profit_loss_info(self, infos, headers=None, args=None):
-        filters, values = generic_repository.get_filters(args, headers)
-        profit_loss = generic_repository.get_objects("profit_loss", filters, values)
+        filters, values = http_repository.get_filters(args, headers)
+        profit_loss = http_repository.get_objects("profit_loss", filters, values, headers)
         infos['resume']['profits'] = 0
         infos['resume']['losses'] = 0
         for pl in profit_loss:
@@ -381,22 +378,24 @@ class InvestmentHandler(Interceptor):
 
     def add_total_daily_gain(self, infos, headers=None):
         filter_ = {
-            'user_id': generic_repository.get_user(headers)['id'],
+            'user_id': http_repository.get_user(headers)['id'],
             'movement_type': 1
         }
-        movements = generic_repository.get_objects("user_stocks_movements",
-                                                   ["user_id", "movement_type"], filter_)
+        movements = http_repository.get_objects("user_stocks_movements",
+                                                ["user_id", "movement_type"], filter_, headers)
         days = 0
         quantity = 0
         for movement in movements:
-            delta = datetime.now() - movement['date']
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
+            delta = datetime.now() - date_
             days += delta.days * movement['quantity']
             quantity += movement['quantity']
         filter_['movement_type'] = 2
-        movements = generic_repository.get_objects("user_stocks_movements",
-                                                   ["user_id", "movement_type"], filter_)
+        movements = http_repository.get_objects("user_stocks_movements",
+                                                ["user_id", "movement_type"], filter_, headers)
         for movement in movements:
-            delta = datetime.now() - movement['date']
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
+            delta = datetime.now() - date_
             days -= delta.days * movement['quantity']
             quantity -= movement['quantity']
 
@@ -413,23 +412,25 @@ class InvestmentHandler(Interceptor):
         return infos
 
     def add_daily_gain(self, stock, headers=None):
-        stock_ = generic_repository.get_object("stocks", ["ticker"], stock)
+        stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
         filter_ = {
             'investment_id': stock_['id'],
-            'user_id': generic_repository.get_user(headers)['id'],
+            'user_id': http_repository.get_user(headers)['id'],
             'movement_type': 1
         }
-        movements = generic_repository.get_objects("user_stocks_movements",
-                                                   ["investment_id", "user_id", "movement_type"], filter_)
+        movements = http_repository.get_objects("user_stocks_movements",
+                                                ["investment_id", "user_id", "movement_type"], filter_, headers)
         days = 0
         for movement in movements:
-            delta = datetime.now() - movement['date']
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
+            delta = datetime.now() - date_
             days += delta.days * movement['quantity']
         filter_['movement_type'] = 2
-        movements = generic_repository.get_objects("user_stocks_movements",
-                                                   ["investment_id", "user_id", "movement_type"], filter_)
+        movements = http_repository.get_objects("user_stocks_movements",
+                                                ["investment_id", "user_id", "movement_type"], filter_, headers)
         for movement in movements:
-            delta = datetime.now() - movement['date']
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
+            delta = datetime.now() - date_
             days -= delta.days * movement['quantity']
 
         avg_days = days / stock['quantity']
@@ -705,13 +706,13 @@ class InvestmentHandler(Interceptor):
 
         return json.loads(df.to_json(orient="records"))
 
-    def att_stocks_ranks(self):
-        stocks = generic_repository.get_objects("stocks", [], {})
+    def att_stocks_ranks(self, headers=None):
+        stocks = http_repository.get_objects("stocks", [], {}, headers)
         stocks = self.calc_ranks(stocks)
         for stock in stocks:
-            generic_repository.update("stocks", ["id"], stock)
+            http_repository.update("stocks", ["id"], stock, headers)
 
-    def att_stock_price_new(self, daily, stock, stock_, type, price_type="4", reimport=False, data_=None):
+    def att_stock_price_new(self, headers, daily, stock, stock_, type, price_type="4", reimport=False, data_=None):
         if stock_['prices_imported'] == 'N' or daily or reimport:
             if type == 'fundo' and not daily or type == 'fundo' and reimport:
                 company_ = stock_['url_infos']
@@ -742,17 +743,15 @@ class InvestmentHandler(Interceptor):
                             if data_ is not None:
                                 can_insert = data > data_
                             if can_insert:
-                                self.add_stock_price(stock_,
-                                                     data)
+                                self.add_stock_price(stock_, data)
                         else:
                             data = datetime.strptime(price['date'], '%d/%m/%y %H:%M').strftime("%Y-%m-%d")
                             can_insert = True
                             if data_ is not None:
                                 can_insert = data > data_
                             if can_insert:
-                                self.add_stock_price(stock_,
-                                                     data)
+                                self.add_stock_price(stock_, data)
             stock_['prices_imported'] = 'S'
             stock_['price'] = stock['price']
-            generic_repository.update("stocks", ["ticker"], stock_)
+            http_repository.update("stocks", ["ticker"], stock_, headers)
         print(f"{stock_['ticker']} - {stock_['name']} - atualizado")

@@ -1,24 +1,23 @@
 from flask import request
 
-from repository.Repository import GenericRepository
+from repository.HttpRepository import HttpRepository
 from service.Interceptor import Interceptor
 
-generic_repository = GenericRepository()
+http_repository = HttpRepository()
 
 
 class StocksHandler(Interceptor):
     def __init__(self):
         super().__init__()
 
-    def get_stocks_basic(self):
+    def get_stocks_basic(self, headers=None):
         select_ = f"select " \
                   f"    ticker, ticker || ' - ' || name as name " \
                   f"from " \
                   f"    stocks "
-        return generic_repository.get_objects_from_sql(select_)
+        return http_repository.execute_select(select_, headers)
 
-
-    def get_stocks(self, type_, args=None):
+    def get_stocks(self, type_, headers=None, args=None):
         if args is None:
             args = request.args
         liquidez = args.get('avg_liquidity')
@@ -43,16 +42,11 @@ class StocksHandler(Interceptor):
                   f"    and avg_liquidity > {liquidez} " \
                   f"order by " \
                   f"    ev_ebit, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
-        cursor, cursor_ = generic_repository.execute_select(select_)
+        objects = http_repository.execute_select(select_, headers)
         stocks = []
         rank = 1
         tikers_prefix = []
-        for row in cursor_:
-            i = 0
-            stock = {}
-            for key in keys:
-                stock[key] = row[i]
-                i += 1
+        for stock in objects:
             stock['url_fundamentos'] = f"https://www.fundamentus.com.br/detalhes.php?papel={stock['ticker']}"
             stock['url_statusinvest'] = f"https://statusinvest.com.br{stock['url_infos']}"
             tiker_prefix = ''.join([i for i in stock['ticker'] if not i.isdigit()])
@@ -63,10 +57,9 @@ class StocksHandler(Interceptor):
             else:
                 stock['rank'] = rank + 10000
             stocks.append(stock)
-        cursor.close()
         return stocks
 
-    def get_founds(self, id):
+    def get_founds(self, id_, headers=None):
         keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name', 'investment_type_id',
                 'url_infos']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
@@ -75,40 +68,24 @@ class StocksHandler(Interceptor):
                   f"from " \
                   f"    stocks " \
                   f"where " \
-                  f"    investment_type_id = {id}  " \
+                  f"    investment_type_id = {id_}  " \
                   f"order by " \
                   f"    name"
-        cursor, cursor_ = generic_repository.execute_select(select_)
+        objects = http_repository.execute_select(select_, headers)
         stocks = []
         rank = 1
-        for row in cursor_:
-            i = 0
-            stock = {}
-            for key in keys:
-                stock[key] = row[i]
-                i += 1
+        for stock in objects:
             stock['url_fundamentos'] = f"https://www.fundamentus.com.br/detalhes.php?papel={stock['ticker']}"
             stock['url_statusinvest'] = f"https://statusinvest.com.br{stock['url_infos']}"
             stock['rank'] = rank
             rank += 1
             stocks.append(stock)
-        cursor.close()
         return stocks
 
-    def get_price(self, investiment_id, date):
+    def get_price(self, investiment_id, date, headers=None):
         select_ = f"select * from stocks_prices where " \
                   f"date_value <= '{date}' " \
                   f"and investment_id = {investiment_id} " \
                   f"order by date_value desc limit 1"
-        cursor, cursor_ = generic_repository.execute_select(select_)
-        col_names = cursor.description
-        obj = {}
-        for row in cursor_:
-            i = 0
-            for col_name in col_names:
-                obj[col_name[0]] = row[i]
-                i += 1
-            cursor.close()
-            return obj
-
-        cursor.close()
+        response = http_repository.execute_select(select_, headers)
+        return response[0]

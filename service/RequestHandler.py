@@ -1,7 +1,6 @@
-from flask import request
-from service.Interceptor import Interceptor
-
 import requests
+
+from service.Interceptor import Interceptor
 
 
 class RequestHandler(Interceptor):

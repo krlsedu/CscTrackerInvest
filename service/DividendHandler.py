@@ -1,9 +1,9 @@
 from flask import request
 
-from repository.Repository import GenericRepository
+from repository.HttpRepository import HttpRepository
 from service.Interceptor import Interceptor
 
-generic_repository = GenericRepository()
+http_repository = HttpRepository()
 
 
 class DividendHandler(Interceptor):
@@ -11,19 +11,18 @@ class DividendHandler(Interceptor):
         super().__init__()
 
     def get_dividends(self, args=None, headers=None):
-        filters, values = generic_repository.get_filters(args, headers)
-        dividends = generic_repository.get_objects('dividends', filters, values)
+        filters, values = http_repository.get_filters(args, headers)
+        dividends = http_repository.get_objects('dividends', filters, values, headers)
         return dividends
 
     def add_dividend(self, headers=None, dividend=None):
         if dividend is None:
             dividend = request.get_json()
-        stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": dividend["ticker"]})
+        stock = http_repository.get_object("stocks", ["ticker"], {"ticker": dividend["ticker"]}, headers)
         try:
             del dividend['ticker']
         except KeyError:
             pass
         dividend['investment_id'] = stock['id']
-        dividend['user_id'] = generic_repository.get_user(headers)['id']
-        generic_repository.insert('dividends', dividend)
+        http_repository.insert('dividends', dividend, headers)
         return 'OK'

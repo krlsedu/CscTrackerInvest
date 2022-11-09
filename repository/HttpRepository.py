@@ -1,54 +1,126 @@
-import json
 from datetime import datetime
 from statistics import stdev, mean
 
 import requests
 from bs4 import BeautifulSoup
 
-from repository.Repository import GenericRepository
 from service.Interceptor import Interceptor
 
-generic_repository = GenericRepository()
-
-headers = {
+headers_sti = {
     'Cookie': '_adasys=5aeb049b-bdfc-4984-9901-bf3539f577b1',
     'User-Agent': 'PostmanRuntime/7.26.8'
 }
+
+url_repository = 'http://127.0.0.1:5015/'
 
 
 class HttpRepository(Interceptor):
     def __init__(self):
         super().__init__()
 
-    def get_stock_type(self, ticker):
+    def insert(self, table, data, headers=None):
+        try:
+            response = requests.post(url_repository + table, headers=headers, json=data)
+            if response.status_code < 200 or response.status_code > 299:
+                raise Exception(f'Error inserting data: {response.text}')
+        except Exception as e:
+            raise e
+
+    def update(self, table, keys=[], data={}, headers=None):
+        params = {}
+        for key in keys:
+            params[key] = data[key]
+        try:
+            response = requests.post(url_repository + table, headers=headers, json=data, params=params)
+            if response.status_code < 200 or response.status_code > 299:
+                raise Exception(f'Error updating data: {response.text}')
+        except Exception as e:
+            raise e
+
+    def get_stock_type(self, ticker, headers=None):
         response = requests.get('https://statusinvest.com.br/home/mainsearchquery', params={"q": ticker},
-                                headers=headers)
+                                headers=headers_sti)
         return response.json()
 
-    def get_firt_stock_type(self, ticker):
-        return self.get_stock_type(ticker)[0]
+    def add_user_id(self, data, headers=None):
+        user = self.get_user(headers)
+        data['user_id'] = user['id']
+        return data
 
-    def get_page_text(self, ticker):
-        stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker})
-        page = requests.get(f"https://statusinvest.com.br{stock['url_infos']}", headers=headers)
+    def get_user(self, headers=None):
+        user_name = headers.get('userName')
+        user = self.get_object('users', ['email'], {'email': user_name}, headers)
+        return user
+
+    def get_object(self, table, keys=[], data={}, headers=None):
+        params = {}
+        for key in keys:
+            params[key] = data[key]
+        response = requests.get(url_repository + 'single/' + table, params=params, headers=headers)
+        return response.json()
+
+    def get_objects(self, table, keys=[], data={}, headers=None):
+        params = {}
+        for key in keys:
+            params[key] = data[key]
+        try:
+            response = requests.get(url_repository + table, params=params, headers=headers)
+            if response.status_code < 200 or response.status_code > 299:
+                raise Exception(f'Error getting data: {response.text}')
+            return response.json()
+        except Exception as e:
+            raise e
+
+    def execute_select(self, select, headers=None):
+        command = {
+            'command': select
+        }
+        response = requests.post(url_repository + "command/select", headers=headers, json=command)
+        return response.json()
+
+    def exist_by_key(self, table, key=[], data={}, headers=None):
+        try:
+            objects = self.get_objects(table, key, data, headers)
+            return objects.__len__() > 0
+        except Exception as e:
+            return False
+
+    def get_filters(self, args=None, headers=None):
+        filters = []
+        values = {}
+        for key in args:
+            filters.append(key)
+            values[key] = args[key]
+        return filters, values
+
+    def get_firt_stock_type(self, ticker, headers=None):
+        return self.get_stock_type(ticker, headers)[0]
+
+    def get_page_text(self, ticker, headers=None):
+        stock = self.get_object("stocks", ["ticker"], {"ticker": ticker}, headers)
+        page = requests.get(f"https://statusinvest.com.br{stock['url_infos']}", headers=headers_sti)
         return page.text
 
-    def get_values_by_ticker(self, stock, force=False):
+    def get_values_by_ticker(self, stock, force=False, headers=None):
         try:
             time = datetime.now().timestamp() * 1000 - stock['last_update'].timestamp() * 1000
             queue = time > (1000 * 60 * 15) or time < 0
+            queue =True
         except Exception as e:
             queue = True
         if queue or force:
             try:
-                text = self.get_page_text(stock['ticker'])
+                text = self.get_page_text(stock['ticker'], headers)
                 soup = BeautifulSoup(text, "html5lib")
                 self.get_values(soup, stock)
-                generic_repository.update("stocks", ["ticker"], stock)
+
+                requests.post(url_repository + 'stocks', headers=headers,
+                              params={"ticker": stock['ticker']}, json=stock)
             except Exception as e:
                 print(e)
                 pass
-        investment_type = generic_repository.get_object("investment_types", ["id"], {"id": stock['investment_type_id']})
+        investment_type = requests.get(url_repository + 'single/investment_types',
+                                       params={"id": stock['investment_type_id']}, headers=headers).json()
         return stock, investment_type
 
     def get_values(self, soup, stock):
@@ -174,20 +246,20 @@ class HttpRepository(Interceptor):
     def get_prices(self, ticker, type, daily=False, price_type="4"):
         if daily:
             response = requests.get(f'https://statusinvest.com.br/{type}/tickerprice?type=-1&currences%5B%5D=1',
-                                    params={"ticker": ticker}, headers=headers)
+                                    params={"ticker": ticker}, headers=headers_sti)
         else:
             response = requests.get(
                 f'https://statusinvest.com.br/{type}/tickerprice?type={price_type}&currences%5B%5D=1',
-                params={"ticker": ticker}, headers=headers)
+                params={"ticker": ticker}, headers=headers_sti)
         return response.json()
 
     def get_prices_fundos(self, ticker, month=False):
         if month:
             response = requests.get(f'https://statusinvest.com.br/fundoinvestimento/profitabilitymainresult?'
                                     f'nome_clean={ticker}'
-                                    f'&time=1', headers=headers)
+                                    f'&time=1', headers=headers_sti)
         else:
             response = requests.get(f'https://statusinvest.com.br/fundoinvestimento/profitabilitymainresult?'
                                     f'nome_clean={ticker}'
-                                    f'&time=6', headers=headers)
+                                    f'&time=6', headers=headers_sti)
         return response.json()

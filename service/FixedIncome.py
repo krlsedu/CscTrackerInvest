@@ -1,12 +1,13 @@
+
 from datetime import datetime
 
 import pandas
 
-from repository.Repository import GenericRepository
+from repository.HttpRepository import HttpRepository
 from service.Interceptor import Interceptor
 from service.StocksHandler import StocksHandler
 
-generic_repository = GenericRepository()
+http_repository = HttpRepository()
 stock_handler = StocksHandler()
 
 
@@ -20,18 +21,18 @@ class FixedIncome(Interceptor):
         }
         return self.get_stock(stock_)
 
-    def get_stock(self, movement):
+    def get_stock(self, movement, headers=None):
         ticker_ = movement['ticker'].upper()
-        stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker_})
+        stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
         try:
             stock['id']
         except Exception as e:
-            ticker_ = self.add_stock(movement)
-            stock = generic_repository.get_object("stocks", ["ticker"], {"ticker": ticker_})
-            self.add_stock_price(stock)
+            ticker_ = self.add_stock(movement, headers)
+            stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
+            self.add_stock_price(stock, headers)
         return stock
 
-    def add_stock(self, movement):
+    def add_stock(self, movement, headers=None):
         type_ = 16
         code_ = movement['ticker'].upper().strip()
         try:
@@ -46,10 +47,10 @@ class FixedIncome(Interceptor):
             'tx_quotient': movement['price'],
             'price': 1
         }
-        generic_repository.insert("stocks", investment_tp)
+        http_repository.insert("stocks", investment_tp, headers)
         return investment_tp['ticker']
 
-    def add_stock_price(self, stock, date=None):
+    def add_stock_price(self, stock, headers, date=None):
         stock_price = {
             "investment_id": stock['id'],
             "price": float(stock['price']),
@@ -57,51 +58,41 @@ class FixedIncome(Interceptor):
         }
         if date is not None:
             stock_price['date_value'] = date
-        generic_repository.insert("stocks_prices", stock_price)
+        http_repository.insert("stocks_prices", stock_price, headers)
 
-    def get_stock_price_by_ticker(self, ticker_, date=None):
+    def get_stock_price_by_ticker(self, ticker_, headers, date=None):
         stock_ = {
             'ticker': ticker_
         }
         if date is not None:
             stock_['buy_date'] = date
-        return self.get_stock_price(stock_)
+        return self.get_stock_price(stock_, headers)
 
-    def get_stock_price(self, movement):
-        stock_ = self.get_stock(movement)
+    def get_stock_price(self, movement, headers=None):
+        stock_ = self.get_stock(movement, headers)
         date_movement = movement['buy_date']
         price_obj = stock_handler.get_price(stock_['id'], date_movement)
         price = float(price_obj['price'])
-        date_price = price_obj['date_value'].strftime('%Y-%m-%d')
+        date_price = datetime.strptime(price_obj['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
         if date_price < date_movement:
             date_range = pandas.date_range(date_price, date_movement)
             for date in date_range:
                 if date.strftime('%Y-%m-%d') > date_price:
-                    tx_val = self.get_tax_price(stock_['tx_type'], date)
+                    tx_val = self.get_tax_price(stock_['tx_type'], date, headers)
                     lt = float(tx_val['value'] / 100)
                     lq = ((1 + lt) ** (1 / 365))
                     price = price * lq
                     stock_['price'] = float(price)
-                    self.add_stock_price(stock_, date.strftime('%Y-%m-%d'))
+                    self.add_stock_price(stock_, headers, date.strftime('%Y-%m-%d'))
         else:
             return price_obj
-        generic_repository.update("stocks", ["id"], stock_)
+        http_repository.update("stocks", ["id"], stock_, headers)
         return stock_handler.get_price(stock_['id'], date_movement)
 
-    def get_tax_price(self, tx_type, date):
+    def get_tax_price(self, tx_type, date, headers=None):
         select_ = f"select * from taxs where " \
                   f"date_value <= '{date}' " \
                   f"and name = '{tx_type}' " \
                   f"order by date_value desc limit 1"
-        cursor, cursor_ = generic_repository.execute_select(select_)
-        col_names = cursor.description
-        obj = {}
-        for row in cursor_:
-            i = 0
-            for col_name in col_names:
-                obj[col_name[0]] = row[i]
-                i += 1
-            cursor.close()
-            return obj
-
-        cursor.close()
+        objects = http_repository.execute_select(select_, headers)
+        return objects[0]

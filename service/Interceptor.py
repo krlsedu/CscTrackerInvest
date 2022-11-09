@@ -1,8 +1,6 @@
 import time
 from threading import Thread
 
-import requests
-
 
 class Interceptor:
     def __getattribute__(self, name):

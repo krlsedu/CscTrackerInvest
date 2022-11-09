@@ -1,12 +1,8 @@
-# This is a sample Python script.
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 import decimal
 import json
 import threading
 
-import psycopg2
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
 from prometheus_flask_exporter import PrometheusMetrics
@@ -43,35 +39,41 @@ class Encoder(json.JSONEncoder):
 @app.route('/fiis', methods=['GET'])
 @cross_origin()
 def get_fiis_list():
-    fiis = fii_handler.get_fiis()
+    headers = request.headers
+    fiis = fii_handler.get_fiis(headers)
     return json.dumps(fiis, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/stocks-br', methods=['GET'])
 @cross_origin()
 def get_stocks_br():
-    stocks = stocks_handler.get_stocks(1)
+    headers = request.headers
+    stocks = stocks_handler.get_stocks(1, headers)
     return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/bdrs', methods=['GET'])
 @cross_origin()
 def get_bdrs():
-    stocks = stocks_handler.get_stocks(4)
+    headers = request.headers
+    stocks = stocks_handler.get_stocks(4, headers)
     return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/founds', methods=['GET'])
 @cross_origin()
 def get_founds():
-    stocks = stocks_handler.get_founds(15)
+    headers = request.headers
+    stocks = stocks_handler.get_founds(15, headers)
     return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
 @app.route('/investment-movement', methods=['POST'])
 @cross_origin()
 def add_movement():
-    dumps = json.dumps(investment_handler.add_movement(request.get_json()))
+    headers = request.headers
+    args = request.args
+    dumps = json.dumps(investment_handler.add_movement(request.get_json(), headers))
     get_investments()
     return dumps, 200, {'Content-Type': 'application/json'}
 
@@ -79,7 +81,9 @@ def add_movement():
 @app.route('/investment-movements', methods=['POST'])
 @cross_origin()
 def add_movements():
-    dumps = json.dumps(investment_handler.add_movements(request.get_json()))
+    headers = request.headers
+    args = request.args
+    dumps = json.dumps(investment_handler.add_movements(request.get_json(), headers))
     get_investments()
     return dumps, 200, {'Content-Type': 'application/json'}
 
@@ -132,20 +136,22 @@ def get_investments_tr(args, headers):
 def att_prices():
     if utils.work_day():
         print('att_prices requested')
-        threading.Thread(target=att_prices_thr()).start()
+        headers = request.headers
+        threading.Thread(target=att_prices_thr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
-def att_prices_thr():
-    att_stocks.att_prices()
-    att_stocks.att_prices(True)
+def att_prices_thr(headers):
+    att_stocks.att_prices(headers)
+    att_stocks.att_prices(headers, True)
 
 
 @app.route('/att-express', methods=['POST'])
 def att_express():
     if utils.work_day() and utils.work_time():
         print("att_express requested")
-        threading.Thread(target=att_stocks.att_expres).start()
+        headers = request.headers
+        threading.Thread(target=att_stocks.att_expres, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
@@ -153,7 +159,8 @@ def att_express():
 def att_bdr():
     if utils.work_day():
         print("att_bdr requested")
-        threading.Thread(target=att_stocks.att_bdr()).start()
+        headers = request.headers
+        threading.Thread(target=att_stocks.att_bdr(), args=(headers,)).start()
 
     return "{}", 200, {'Content-Type': 'application/json'}
 
@@ -161,7 +168,9 @@ def att_bdr():
 @app.route('/att-full', methods=['POST'])
 def att_full():  # put application's code here
     print("att_full requested")
-    threading.Thread(target=att_stocks.att_full()).start()
+    headers = request.headers
+    args = request.args
+    threading.Thread(target=att_stocks.att_full, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
