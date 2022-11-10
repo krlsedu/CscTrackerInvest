@@ -160,7 +160,7 @@ def att_bdr():
     if utils.work_day():
         print("att_bdr requested")
         headers = request.headers
-        threading.Thread(target=att_stocks.att_bdr(), args=(headers,)).start()
+        threading.Thread(target=att_stocks.att_bdr, args=(headers,)).start()
 
     return "{}", 200, {'Content-Type': 'application/json'}
 

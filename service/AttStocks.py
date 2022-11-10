@@ -39,26 +39,29 @@ class AttStocks(Interceptor):
     def att_acoes(self, headers=None, full=False):
         acoes = load_acoes_info()
         for acao in acoes:
-            print(f"Atualizando a acao: {acao['ticker']}")
-            stock_ = investment_handler.get_stock(acao['ticker'], headers)
+            try:
+                print(f"Atualizando a acao: {acao['ticker']}")
+                stock_ = investment_handler.get_stock(acao['ticker'], headers)
 
-            if full:
-                stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
-            else:
-                try:
-                    stock_['price'] = acao['price']
-                    stock_['pvp'] = acao['p_VP']
-                    stock_['pl'] = acao['p_L']
-                    stock_['ev_ebit'] = acao['eV_Ebit']
-                    stock_['avg_liquidity'] = acao['liquidezMediaDiaria']
-                    stock_['dy'] = acao['dy']
-                except Exception as e:
-                    pass
-            http_repository.update("stocks", ["ticker"], stock_, headers)
+                if full:
+                    stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+                else:
+                    try:
+                        stock_['price'] = acao['price']
+                        stock_['pvp'] = acao['p_VP']
+                        stock_['pl'] = acao['p_L']
+                        stock_['ev_ebit'] = acao['eV_Ebit']
+                        stock_['avg_liquidity'] = acao['liquidezMediaDiaria']
+                        stock_['dy'] = acao['dy']
+                    except Exception as e:
+                        pass
+                http_repository.update("stocks", ["ticker"], stock_, headers)
 
-            investment_handler.add_stock_price(stock_, headers)
+                investment_handler.add_stock_price(stock_, headers)
 
-            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+            except Exception as e:
+                print(f"Erro ao atualizar {acao['ticker']} - {acao['name']} - {e}")
         return acoes
 
     def att_bdrs(self, headers=None):
@@ -68,29 +71,35 @@ class AttStocks(Interceptor):
     def att_bdr(self, headers=None):
         bdrs = load_bdr_info()
         for bdr in bdrs:
-            company_ = bdr['url']
-            company_ = company_.replace('/bdrs/', '')
-            print(f"Atualizando BDR: {company_}")
-            stock_ = investment_handler.get_stock(company_, headers)
-            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+            try:
+                company_ = bdr['url']
+                company_ = company_.replace('/bdrs/', '')
+                print(f"Atualizando BDR: {company_}")
+                stock_ = investment_handler.get_stock(company_, headers)
+                stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
 
-            http_repository.update("stocks", ["ticker"], stock_, headers)
+                http_repository.update("stocks", ["ticker"], stock_, headers)
 
-            investment_handler.add_stock_price(stock_, headers)
-            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                investment_handler.add_stock_price(stock_, headers)
+                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+            except Exception as e:
+                print(f"Erro ao atualizar {bdr['url']} - {bdr['name']} - {e}")
         return bdrs
 
     def att_brd_expres(self, headers=None):
         bdrs = self.load_bdr_used(headers)
         for bdr in bdrs:
-            company_ = bdr['ticker']
-            stock_ = investment_handler.get_stock(company_, headers)
-            stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+            try:
+                company_ = bdr['ticker']
+                stock_ = investment_handler.get_stock(company_, headers)
+                stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
 
-            http_repository.update("stocks", ["ticker"], stock_, headers)
+                http_repository.update("stocks", ["ticker"], stock_, headers)
 
-            investment_handler.add_stock_price(stock_, headers)
-            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                investment_handler.add_stock_price(stock_, headers)
+                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+            except Exception as e:
+                print(f"Erro ao atualizar {bdr['ticker']} - {bdr['name']} - {e}")
         return bdrs
 
     def load_bdr_used(self, headers=None):
@@ -131,13 +140,16 @@ class AttStocks(Interceptor):
     def att_fundos(self, headers=None):
         fundos = http_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15}, headers)
         for fundo in fundos:
-            stock_, investment_type = http_repository.get_values_by_ticker(fundo, True, headers)
+            try:
+                stock_, investment_type = http_repository.get_values_by_ticker(fundo, True, headers)
 
-            http_repository.update("stocks", ["ticker"], stock_, headers)
+                http_repository.update("stocks", ["ticker"], stock_, headers)
 
-            stock_['price'] = float(stock_['price'])
-            investment_handler.add_stock_price(stock_, headers)
-            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                stock_['price'] = float(stock_['price'])
+                investment_handler.add_stock_price(stock_, headers)
+                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+            except Exception as e:
+                print(f"Erro ao atualizar {fundo['ticker']} - {fundo['name']} - {e}")
         return fundos
 
     def att_prices(self, headers, daily=False):
