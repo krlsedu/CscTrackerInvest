@@ -104,8 +104,8 @@ class AttStocks(Interceptor):
         fiis = load_fiis_info()
         for fii in fiis:
             print(f"Atualizando o fundo: {fii['ticker']}")
-            stock_ = investment_handler.get_stock(fii['ticker'], headers)
             try:
+                stock_ = investment_handler.get_stock(fii['ticker'], headers)
                 if full:
                     stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
                 else:
@@ -118,12 +118,12 @@ class AttStocks(Interceptor):
                     except Exception as e:
                         print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
                         pass
+
+                http_repository.update("stocks", ["ticker"], stock_, headers)
+
+                investment_handler.add_stock_price(stock_, headers)
             except Exception as e:
                 print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
-
-            http_repository.update("stocks", ["ticker"], stock_, headers)
-
-            investment_handler.add_stock_price(stock_, headers)
 
             print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fiis
