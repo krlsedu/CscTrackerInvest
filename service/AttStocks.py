@@ -122,10 +122,10 @@ class AttStocks(Interceptor):
                 http_repository.update("stocks", ["ticker"], stock_, headers)
 
                 investment_handler.add_stock_price(stock_, headers)
+
+                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
                 print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
-
-            print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
         return fiis
 
     def att_fundos(self, headers=None):
