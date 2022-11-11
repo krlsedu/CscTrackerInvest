@@ -148,7 +148,7 @@ def att_prices_thr(headers):
 
 @app.route('/att-express', methods=['POST'])
 def att_express():
-    if utils.work_day() and utils.work_time():
+    if (utils.work_day() and utils.work_time()) or request.headers.get('force') == 'true':
         print("att_express requested")
         headers = request.headers
         threading.Thread(target=att_stocks.att_expres, args=(headers,)).start()
