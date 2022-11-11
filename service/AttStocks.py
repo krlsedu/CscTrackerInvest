@@ -6,6 +6,7 @@ from service.LoadInfo import load_fiis_info, load_acoes_info, load_bdr_info
 investment_handler = InvestmentHandler()
 http_repository = HttpRepository()
 
+
 class AttStocks(Interceptor):
     def __init__(self):
         super().__init__()
@@ -172,13 +173,13 @@ class AttStocks(Interceptor):
             company_ = stock['url']
             company_ = company_.replace('/bdrs/', '')
             print(f"Atualizando o {type}: {company_}")
-            stock_ = investment_handler.get_stock(company_)
+            stock_ = investment_handler.get_stock(company_, headers)
             stock['price'] = stock_['price']
         elif type == 'fundo':
             stock_ = stock
         else:
             print(f"Atualizando a {type}: {stock['ticker']}")
-            stock_ = investment_handler.get_stock(stock['ticker'])
+            stock_ = investment_handler.get_stock(stock['ticker'], headers)
             stock['price'] = stock_['price']
         investment_handler.att_stock_price_new(headers, daily, stock, stock_, type)
 

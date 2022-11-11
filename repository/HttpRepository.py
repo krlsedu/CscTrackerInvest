@@ -83,8 +83,13 @@ class HttpRepository(Interceptor):
         command = {
             'command': select
         }
-        response = requests.post(url_repository + "command/select", headers=headers, json=command)
-        return response.json()
+        try:
+            response = requests.post(url_repository + "command/select", headers=headers, json=command)
+            if response.status_code < 200 or response.status_code > 299:
+                raise Exception(f'Error getting data: {response.text}')
+            return response.json()
+        except Exception as e:
+            raise e
 
     def exist_by_key(self, table, key=[], data={}, headers=None):
         try:
