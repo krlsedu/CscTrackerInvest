@@ -71,7 +71,7 @@ class FixedIncome(Interceptor):
     def get_stock_price(self, movement, headers=None):
         stock_ = self.get_stock(movement, headers)
         date_movement = movement['buy_date']
-        price_obj = stock_handler.get_price(stock_['id'], date_movement)
+        price_obj = stock_handler.get_price(stock_['id'], date_movement, headers)
         price = float(price_obj['price'])
         date_price = datetime.strptime(price_obj['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
         if date_price < date_movement:
