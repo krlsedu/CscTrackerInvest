@@ -87,7 +87,7 @@ class FixedIncome(Interceptor):
         else:
             return price_obj
         http_repository.update("stocks", ["id"], stock_, headers)
-        return stock_handler.get_price(stock_['id'], date_movement)
+        return stock_handler.get_price(stock_['id'], date_movement, headers)
 
     def get_tax_price(self, tx_type, date, headers=None):
         select_ = f"select * from taxs where " \
