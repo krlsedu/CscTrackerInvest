@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from statistics import stdev, mean
 
 import requests
@@ -116,7 +116,9 @@ class HttpRepository(Interceptor):
 
     def get_values_by_ticker(self, stock, force=False, headers=None):
         try:
-            time = datetime.now().timestamp() * 1000 - stock['last_update'].timestamp() * 1000
+            last_update = datetime.strptime(stock['last_update'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
+            astimezone = datetime.now().astimezone(timezone.utc)
+            time = astimezone.timestamp() * 1000 - last_update.timestamp() * 1000
             queue = time > (1000 * 60 * 15) or time < 0
         except Exception as e:
             queue = True

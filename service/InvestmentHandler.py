@@ -187,7 +187,7 @@ class InvestmentHandler(Interceptor):
                         stock_consolidated['price_ant'] = price_ant['price']
                         stock_consolidated['price_atu'] = price_atu['price']
                         dt_prc_ant = datetime.strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f') \
-                            .strftime('%Y-%m-%d')
+                            .replace(tzinfo=timezone.utc).strftime('%Y-%m-%d')
                         dt_prc_req = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
                         if dt_prc_ant < \
                                 dt_prc_req:
@@ -226,8 +226,9 @@ class InvestmentHandler(Interceptor):
                                                                         perc_gain_ant * float(stock_consolidated[
                                                                                                   'total_value_invest']))
 
-                            stock_consolidated['value_ant_date'] = datetime \
-                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
+                            stock_consolidated['value_ant_date'] = datetime\
+                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f')\
+                                .replace(tzinfo=timezone.utc).strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
                     else:
@@ -236,7 +237,8 @@ class InvestmentHandler(Interceptor):
                         if price_ant is not None:
                             stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
                             stock_consolidated['value_ant_date'] = datetime \
-                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
+                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f')\
+                                .replace(tzinfo=timezone.utc).strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
                     stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
@@ -386,16 +388,16 @@ class InvestmentHandler(Interceptor):
         days = 0
         quantity = 0
         for movement in movements:
-            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
-            delta = datetime.now() - date_
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
+            delta = datetime.now().astimezone(tz=timezone.utc)  - date_
             days += delta.days * movement['quantity']
             quantity += movement['quantity']
         filter_['movement_type'] = 2
         movements = http_repository.get_objects("user_stocks_movements",
                                                 ["user_id", "movement_type"], filter_, headers)
         for movement in movements:
-            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
-            delta = datetime.now() - date_
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
+            delta = datetime.now().astimezone(tz=timezone.utc)  - date_
             days -= delta.days * movement['quantity']
             quantity -= movement['quantity']
 
@@ -422,15 +424,15 @@ class InvestmentHandler(Interceptor):
                                                 ["investment_id", "user_id", "movement_type"], filter_, headers)
         days = 0
         for movement in movements:
-            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
-            delta = datetime.now() - date_
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
+            delta = datetime.now().astimezone(tz=timezone.utc) - date_
             days += delta.days * movement['quantity']
         filter_['movement_type'] = 2
         movements = http_repository.get_objects("user_stocks_movements",
                                                 ["investment_id", "user_id", "movement_type"], filter_, headers)
         for movement in movements:
-            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f')
-            delta = datetime.now() - date_
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
+            delta = datetime.now().astimezone(tz=timezone.utc)  - date_
             days -= delta.days * movement['quantity']
 
         avg_days = days / stock['quantity']
@@ -728,7 +730,7 @@ class InvestmentHandler(Interceptor):
                     price = values[i]['price']
                     stock_['price'] = price
                     if can_insert:
-                        self.add_stock_price(stock_, data)
+                        self.add_stock_price(stock_, headers, data)
                 pass
             else:
                 infos = http_repository.get_prices(stock_['ticker'], type, daily, price_type)
@@ -742,14 +744,14 @@ class InvestmentHandler(Interceptor):
                             if data_ is not None:
                                 can_insert = data > data_
                             if can_insert:
-                                self.add_stock_price(stock_, data)
+                                self.add_stock_price(stock_, headers, data)
                         else:
                             data = datetime.strptime(price['date'], '%d/%m/%y %H:%M').strftime("%Y-%m-%d")
                             can_insert = True
                             if data_ is not None:
                                 can_insert = data > data_
                             if can_insert:
-                                self.add_stock_price(stock_, data)
+                                self.add_stock_price(stock_, headers, data)
             stock_['prices_imported'] = 'S'
             stock_['price'] = stock['price']
             http_repository.update("stocks", ["ticker"], stock_, headers)
