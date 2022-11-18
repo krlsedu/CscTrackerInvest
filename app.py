@@ -1,4 +1,3 @@
-
 import decimal
 import json
 import threading
@@ -11,6 +10,7 @@ from service.AttStocks import AttStocks
 from service.DividendHandler import DividendHandler
 from service.FiiHandler import FiiHandler
 from service.InvestmentHandler import InvestmentHandler
+from service.LoadBalancerRegister import LoadBalancerRegister
 from service.RequestHandler import RequestHandler
 from service.StocksHandler import StocksHandler
 from service.Utils import Utils
@@ -28,6 +28,16 @@ stocks_handler = StocksHandler()
 utils = Utils()
 request_handler = RequestHandler()
 dividend_handler = DividendHandler()
+
+balancer = LoadBalancerRegister()
+
+
+def schedule_job():
+    balancer.register_service('invest')
+
+
+t1 = threading.Thread(target=schedule_job, args=())
+t1.start()
 
 
 class Encoder(json.JSONEncoder):
