@@ -26,7 +26,7 @@ class LoadBalancerRegister(Interceptor):
         pod = {'service': service_name, 'host': host_name, 'port': port}
         headers = {'Content-Type': 'application/json'}
         try:
-            response = requests.post('http://balance:8080/pod', json=pod, headers=headers)
+            response = requests.post('http://balancer:8080/pod', json=pod, headers=headers)
             if response.status_code < 200 or response.status_code > 299:
                 print(pod, response.status_code)
                 print(f'Error sending metrics: {response.text}')
