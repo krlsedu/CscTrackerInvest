@@ -1,6 +1,7 @@
 import decimal
 import json
 import threading
+import time
 
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
@@ -33,7 +34,7 @@ balancer = LoadBalancerRegister()
 
 
 def schedule_job():
-    balancer.register_service('invest')
+    balancer.register_service('invest', '127.0.0.1', 5000)
 
 
 t1 = threading.Thread(target=schedule_job, args=())
@@ -130,15 +131,19 @@ def get_investments():
 
 def get_investments_tr(args, headers):
     try:
+        time.sleep(1)
+        balancer.lock_unlock('invest')
         request_handler.inform_to_client("Investments refresh requested", "investments", headers,
                                          "Investments refresh requested")
         consolidated = investment_handler.buy_sell_indication(args, headers)
         consolidated = json.dumps(consolidated, cls=Encoder, ensure_ascii=False)
         request_handler.inform_to_client(consolidated, "investments", headers, "Investments refresh completed")
+        balancer.lock_unlock('invest', False)
         return consolidated, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}
         print(e)
+        balancer.lock_unlock('invest', False)
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
@@ -152,8 +157,11 @@ def att_prices():
 
 
 def att_prices_thr(headers):
+    time.sleep(1)
+    balancer.lock_unlock('invest')
     att_stocks.att_prices(headers)
     att_stocks.att_prices(headers, True)
+    balancer.lock_unlock('invest', False)
 
 
 @app.route('/att-express', methods=['POST'])
@@ -170,9 +178,16 @@ def att_bdr():
     if utils.work_day():
         print("att_bdr requested")
         headers = request.headers
-        threading.Thread(target=att_stocks.att_bdr, args=(headers,)).start()
+        threading.Thread(target=att_bdr_thr, args=(headers,)).start()
 
     return "{}", 200, {'Content-Type': 'application/json'}
+
+
+def att_bdr_thr(headers):
+    time.sleep(1)
+    balancer.lock_unlock('invest')
+    att_stocks.att_bdr(headers)
+    balancer.lock_unlock('invest', False)
 
 
 @app.route('/att-full', methods=['POST'])
@@ -180,8 +195,15 @@ def att_full():  # put application's code here
     print("att_full requested")
     headers = request.headers
     args = request.args
-    threading.Thread(target=att_stocks.att_full, args=(headers,)).start()
+    threading.Thread(target=att_full_thr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
+
+
+def att_full_thr(headers):
+    time.sleep(1)
+    balancer.lock_unlock('invest')
+    att_stocks.att_full(headers)
+    balancer.lock_unlock('invest', False)
 
 
 if __name__ == '__main__':

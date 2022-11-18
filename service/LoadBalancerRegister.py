@@ -34,3 +34,18 @@ class LoadBalancerRegister(Interceptor):
         except Exception as e:
             print(e)
             pass
+
+    def lock_unlock(self, service_name, locked=True, host_name=None):
+        if host_name is None:
+            host_name = socket.gethostname()
+        pod = {'service': service_name, 'host': host_name, 'locked': locked}
+        headers = {'Content-Type': 'application/json'}
+        try:
+            response = requests.post('http://balancer:8080/lock-unlock', json=pod, headers=headers)
+            if response.status_code < 200 or response.status_code > 299:
+                print(pod, response.status_code)
+                print(f'Error sending metrics: {response.text}')
+            pass
+        except Exception as e:
+            print(e)
+            pass
