@@ -34,7 +34,7 @@ balancer = LoadBalancerRegister()
 
 
 def schedule_job():
-    balancer.register_service('invest', '127.0.0.1', 5000)
+    balancer.register_service('invest')
 
 
 t1 = threading.Thread(target=schedule_job, args=())
