@@ -62,7 +62,7 @@ class AttStocks(Interceptor):
 
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print(f"Erro ao atualizar {acao['ticker']} - {acao['name']} - {e}")
+                print(f"Erro ao atualizar {acao['ticker']} - {e}")
         return acoes
 
     def att_bdrs(self, headers=None):
@@ -84,7 +84,7 @@ class AttStocks(Interceptor):
                 investment_handler.add_stock_price(stock_, headers)
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print(f"Erro ao atualizar {bdr['url']} - {bdr['name']} - {e}")
+                print(f"Erro ao atualizar {bdr['url']} - {e}")
         return bdrs
 
     def att_brd_expres(self, headers=None):

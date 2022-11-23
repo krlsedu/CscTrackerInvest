@@ -116,7 +116,10 @@ class InvestmentHandler(Interceptor):
             stock_price['date_value'] = date
 
         data_ant = datetime.now().astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-        price_ant = stock_handler.get_price(stock['id'], data_ant, headers)
+        try:
+            price_ant = stock_handler.get_price(stock['id'], data_ant, headers)
+        except:
+            price_ant = None
         if price_ant is not None:
             if float(price_ant['price']) != float(stock['price']):
                 self.add_price(stock_price, headers)
