@@ -536,6 +536,9 @@ class InvestmentHandler(Interceptor):
                           str(stock['monthly_gain'] * 100) + '%'
                 request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
                                                  "Buy Sell Recommendation")
+                stock_notification_config['last_notification'] = datetime\
+                    .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
+                http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
             elif stock_notification_config['value_target'] is not None and \
                     stock_notification_config['value_target'] < stock['price_atu'] and \
                     self.check_time_to_notfy(stock_notification_config, headers):
@@ -544,9 +547,9 @@ class InvestmentHandler(Interceptor):
                           str(stock['price_atu'])
                 request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
                                                  "Buy Sell Recommendation")
-            stock_notification_config['last_notification'] = datetime\
-                .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
-            http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
+                stock_notification_config['last_notification'] = datetime\
+                    .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
+                http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
             return stock_notification_config
 
     def check_time_to_notfy(self, stock_notification_config, headers=None):
