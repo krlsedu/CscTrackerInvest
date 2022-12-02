@@ -2,12 +2,14 @@ import json
 from datetime import timedelta, datetime, timezone
 
 import pandas as pd
+import pytz
 
 from repository.HttpRepository import HttpRepository
 from service.DividendHandler import DividendHandler
 from service.FiiHandler import FiiHandler
 from service.FixedIncome import FixedIncome
 from service.Interceptor import Interceptor
+from service.RequestHandler import RequestHandler
 from service.StocksHandler import StocksHandler
 
 http_repository = HttpRepository()
@@ -15,6 +17,7 @@ fii_handler = FiiHandler()
 stock_handler = StocksHandler()
 fixed_income_handler = FixedIncome()
 dividend_handler = DividendHandler()
+request_handler = RequestHandler()
 
 
 class InvestmentHandler(Interceptor):
@@ -229,8 +232,8 @@ class InvestmentHandler(Interceptor):
                                                                         perc_gain_ant * float(stock_consolidated[
                                                                                                   'total_value_invest']))
 
-                            stock_consolidated['value_ant_date'] = datetime\
-                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f')\
+                            stock_consolidated['value_ant_date'] = datetime \
+                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f') \
                                 .replace(tzinfo=timezone.utc).strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
@@ -240,7 +243,7 @@ class InvestmentHandler(Interceptor):
                         if price_ant is not None:
                             stock_consolidated['total_value_ant'] = float(stock['quantity']) * float(price_ant['price'])
                             stock_consolidated['value_ant_date'] = datetime \
-                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f')\
+                                .strptime(price_ant['date_value'], '%Y-%m-%d %H:%M:%S.%f') \
                                 .replace(tzinfo=timezone.utc).strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
@@ -322,22 +325,22 @@ class InvestmentHandler(Interceptor):
             stock_ = stock
             types_sum['types_count'][stock['investment_type_id']] += 1
             stock_ref = self.get_stock_ref(bdrs, fiis, stock_, stock_ref, stocks_br, founds, fix_income)
-            self.set_buy_sell_info(stock_, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock_, stock_ref, types_sum, stocks, headers, True)
         for stock in stocks_br:
             stock_ref = stock
-            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks, headers)
         for stock in bdrs:
             stock_ref = stock
-            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks, headers)
         for stock in fiis:
             stock_ref = stock
-            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks, headers)
         for stock in founds:
             stock_ref = stock
-            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks, headers)
         for stock in fix_income:
             stock_ref = stock
-            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks)
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks, headers)
         infos['stocks'] = stocks
         infos['stocks_br'] = stocks_br
         infos['bdrs'] = bdrs
@@ -392,7 +395,7 @@ class InvestmentHandler(Interceptor):
         quantity = 0
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
-            delta = datetime.now().astimezone(tz=timezone.utc)  - date_
+            delta = datetime.now().astimezone(tz=timezone.utc) - date_
             days += delta.days * movement['quantity']
             quantity += movement['quantity']
         filter_['movement_type'] = 2
@@ -400,7 +403,7 @@ class InvestmentHandler(Interceptor):
                                                 ["user_id", "movement_type"], filter_, headers)
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
-            delta = datetime.now().astimezone(tz=timezone.utc)  - date_
+            delta = datetime.now().astimezone(tz=timezone.utc) - date_
             days -= delta.days * movement['quantity']
             quantity -= movement['quantity']
 
@@ -435,7 +438,7 @@ class InvestmentHandler(Interceptor):
                                                 ["investment_id", "user_id", "movement_type"], filter_, headers)
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
-            delta = datetime.now().astimezone(tz=timezone.utc)  - date_
+            delta = datetime.now().astimezone(tz=timezone.utc) - date_
             days -= delta.days * movement['quantity']
 
         avg_days = days / stock['quantity']
@@ -515,7 +518,58 @@ class InvestmentHandler(Interceptor):
 
             return new_val
 
-    def set_buy_sell_info(self, stock_, stock_ref, types_sum, stocks):
+    def check_notify_stock(self, stock, headers=None):
+        stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
+        filter_ = {
+            'investment_id': stock_['id'],
+        }
+        stock_notification_config = http_repository \
+            .get_object("stock_notification_config", ["investment_id"], filter_, headers)
+        if stock_notification_config is None:
+            return None
+        else:
+            if stock_notification_config['monthly_gain_target'] is not None and \
+                    stock_notification_config['monthly_gain_target'] / 100 < stock['monthly_gain'] and \
+                    self.check_time_to_notfy(stock_notification_config, headers):
+                message = 'A ação ' + stock['ticker'] + ' atingiu o ganho mensal esperado de ' + \
+                          str(stock_notification_config['monthly_gain_target']) + '%. Ganho atual: ' + \
+                          str(stock['monthly_gain'] * 100) + '%'
+                request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
+                                                 "Buy Sell Recommendation")
+            elif stock_notification_config['value_target'] is not None and \
+                    stock_notification_config['value_target'] < stock['price_atu'] and \
+                    self.check_time_to_notfy(stock_notification_config, headers):
+                message = 'A ação ' + stock['ticker'] + ' atingiu o valor desejado de ' + \
+                          str(stock_notification_config['value_target']) + '. Valor atual: ' + \
+                          str(stock['price_atu'])
+                request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
+                                                 "Buy Sell Recommendation")
+            stock_notification_config['last_notification'] = datetime\
+                .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
+            http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
+            return stock_notification_config
+
+    def check_time_to_notfy(self, stock_notification_config, headers=None):
+        try:
+            last_update = datetime.strptime(stock_notification_config['last_notification'], '%Y-%m-%d %H:%M:%S.%f') \
+                .replace(tzinfo=timezone.utc)
+            astimezone = datetime.now().astimezone(timezone.utc)
+            time = astimezone.timestamp() * 1000 - last_update.timestamp() * 1000
+            if stock_notification_config['frequency_unit'] == 'second':
+                return time > stock_notification_config['frequency'] * 1000
+            elif stock_notification_config['frequency_unit'] == 'minute':
+                return time > stock_notification_config['frequency'] * 1000 * 60
+            elif stock_notification_config['frequency_unit'] == 'hour':
+                return time > stock_notification_config['frequency_value'] * 3600000
+            elif stock_notification_config['frequency_unit'] == 'day':
+                return time > stock_notification_config['frequency_value'] * 86400000
+            elif stock_notification_config['frequency_unit'] == 'week':
+                return time > stock_notification_config['frequency_value'] * 604800000
+        except Exception as e:
+            print(e)
+            return True
+
+    def set_buy_sell_info(self, stock_, stock_ref, types_sum, stocks, headers=None, notify=False):
         ticker_perc_max_ideal = 0.05
         great_gain = 0.07
         type_ivest_id_ = stock_['investment_type_id']
@@ -551,7 +605,8 @@ class InvestmentHandler(Interceptor):
                     stock_['monthly_gain'] = self.get_ticket_info(stock_['ticker'], stocks, 'monthly_gain')
             except:
                 stock_['monthly_gain'] = self.get_ticket_info(stock_['ticker'], stocks, 'monthly_gain')
-
+            if notify:
+                self.check_notify_stock(stock_, headers)
             rank = stock_ref['rank']
             if rank <= max_rank_to_buy:
                 if stock_['monthly_gain'] > great_gain:
