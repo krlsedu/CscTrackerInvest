@@ -12,7 +12,7 @@ class Utils(Interceptor):
         t = n.timetuple()
         y, m, d, h, min, sec, wd, yd, i = t
         h = h - 3
-        return 8 <= h <= 18
+        return 8 <= h <= 19
 
     def work_day(self):
         n = datetime.now()

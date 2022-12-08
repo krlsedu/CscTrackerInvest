@@ -11,6 +11,7 @@ from service.FixedIncome import FixedIncome
 from service.Interceptor import Interceptor
 from service.RequestHandler import RequestHandler
 from service.StocksHandler import StocksHandler
+from service.Utils import Utils
 
 http_repository = HttpRepository()
 fii_handler = FiiHandler()
@@ -18,6 +19,7 @@ stock_handler = StocksHandler()
 fixed_income_handler = FixedIncome()
 dividend_handler = DividendHandler()
 request_handler = RequestHandler()
+utils = Utils()
 
 
 class InvestmentHandler(Interceptor):
@@ -528,6 +530,8 @@ class InvestmentHandler(Interceptor):
         if stock_notification_config is None:
             return None
         else:
+            if not (utils.work_day() and utils.work_time()):
+                return stock_notification_config
             if stock_notification_config['monthly_gain_target'] is not None and \
                     stock_notification_config['monthly_gain_target'] / 100 < stock['monthly_gain'] and \
                     self.check_time_to_notfy(stock_notification_config, headers):
@@ -575,6 +579,7 @@ class InvestmentHandler(Interceptor):
     def set_buy_sell_info(self, stock_, stock_ref, types_sum, stocks, headers=None, notify=False):
         ticker_perc_max_ideal = 0.05
         great_gain = 0.07
+        great_gain_ = great_gain
         type_ivest_id_ = stock_['investment_type_id']
         if type_ivest_id_ == 16:
             total_invested = types_sum[0]
@@ -609,7 +614,13 @@ class InvestmentHandler(Interceptor):
             except:
                 stock_['monthly_gain'] = self.get_ticket_info(stock_['ticker'], stocks, 'monthly_gain')
             if notify:
-                self.check_notify_stock(stock_, headers)
+                conf_not = self.check_notify_stock(stock_, headers)
+                if conf_not is not None:
+                    great_gain = conf_not['monthly_gain_target'] / 100
+                else:
+                    great_gain = great_gain_
+            else:
+                great_gain = great_gain_
             rank = stock_ref['rank']
             if rank <= max_rank_to_buy:
                 if stock_['monthly_gain'] > great_gain:
