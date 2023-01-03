@@ -357,7 +357,10 @@ class InvestmentHandler(Interceptor):
 
     def add_dividend_info(self, stock, headers=None):
         stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
-        arg = {'investment_id': stock_['id']}
+        arg = {
+            'investment_id': stock_['id'],
+            'active': 'S'
+        }
         dividends = dividend_handler.get_dividends(arg, headers)
         stock['dividends'] = 0
         for dividend in dividends:
@@ -426,7 +429,8 @@ class InvestmentHandler(Interceptor):
         filter_ = {
             'investment_id': stock_['id'],
             'user_id': http_repository.get_user(headers)['id'],
-            'movement_type': 1
+            'movement_type': 1,
+            'active': 'S'
         }
         movements = http_repository.get_objects("user_stocks_movements",
                                                 ["investment_id", "user_id", "movement_type"], filter_, headers)
@@ -540,7 +544,7 @@ class InvestmentHandler(Interceptor):
                           str(stock['monthly_gain'] * 100) + '%'
                 request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
                                                  "Buy Sell Recommendation")
-                stock_notification_config['last_notification'] = datetime\
+                stock_notification_config['last_notification'] = datetime \
                     .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
                 http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
             elif stock_notification_config['value_target'] is not None and \
@@ -551,7 +555,7 @@ class InvestmentHandler(Interceptor):
                           str(stock['price_atu'])
                 request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
                                                  "Buy Sell Recommendation")
-                stock_notification_config['last_notification'] = datetime\
+                stock_notification_config['last_notification'] = datetime \
                     .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
                 http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
             return stock_notification_config
