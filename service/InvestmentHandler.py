@@ -433,7 +433,8 @@ class InvestmentHandler(Interceptor):
             'active': 'S'
         }
         movements = http_repository.get_objects("user_stocks_movements",
-                                                ["investment_id", "user_id", "movement_type"], filter_, headers)
+                                                ["investment_id", "user_id", "movement_type", "active"],
+                                                filter_, headers)
         days = 0
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
@@ -441,7 +442,8 @@ class InvestmentHandler(Interceptor):
             days += delta.days * movement['quantity']
         filter_['movement_type'] = 2
         movements = http_repository.get_objects("user_stocks_movements",
-                                                ["investment_id", "user_id", "movement_type"], filter_, headers)
+                                                ["investment_id", "user_id", "movement_type", "active"],
+                                                filter_, headers)
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
             delta = datetime.now().astimezone(tz=timezone.utc) - date_
