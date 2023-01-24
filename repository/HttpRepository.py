@@ -136,7 +136,7 @@ class HttpRepository(Interceptor):
                 print(e)
                 pass
         try:
-            prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock['ticker'])
+            prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock['ticker']).json()
             stock['price'] = prices['price']['regularMarketPrice']
             requests.post(url_repository + 'stocks', headers=headers,
                           params={"ticker": stock['ticker']}, json=stock)
