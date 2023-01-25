@@ -1,4 +1,3 @@
-
 import json
 from datetime import timedelta, datetime, timezone
 
@@ -24,6 +23,7 @@ request_handler = RequestHandler()
 utils = Utils()
 
 url_bff = 'http://bff:8080/'
+
 
 class InvestmentHandler(Interceptor):
     def __init__(self):
@@ -164,6 +164,19 @@ class InvestmentHandler(Interceptor):
             values[key] = args[key]
         return http_repository.get_objects("user_stocks", filters, values, headers)
 
+    def att_price_yahoo(self, stock_, headers):
+        try:
+            prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock_['ticker'], headers=headers) \
+                .json()
+            stock_['price'] = prices['price']['regularMarketPrice']
+            self.add_stock_price(stock_, headers)
+        except:
+            try:
+                self.add_stock_price(stock_, headers)
+            except:
+                pass
+            pass
+
     def get_stocks_consolidated(self, args=None, headers=None):
         stocks = self.get_stocks(args, headers)
         if stocks.__len__() > 0:
@@ -180,14 +193,7 @@ class InvestmentHandler(Interceptor):
                     stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
                     stock_, investment_type = http_repository.get_values_by_ticker(stock_, False, headers)
 
-                    try:
-                        prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock['ticker'], headers=headers).json()
-                        stock['price'] = prices['price']['regularMarketPrice']
-
-                        self.add_stock_price(stock_, headers)
-                    except Exception as e:
-                        print(e)
-                        pass
+                    self.att_price_yahoo(stock_, headers)
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \

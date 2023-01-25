@@ -58,7 +58,7 @@ class AttStocks(Interceptor):
                         pass
                 http_repository.update("stocks", ["ticker"], stock_, headers)
 
-                investment_handler.add_stock_price(stock_, headers)
+                investment_handler.att_price_yahoo(stock_, headers)
 
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
@@ -81,7 +81,7 @@ class AttStocks(Interceptor):
 
                 http_repository.update("stocks", ["ticker"], stock_, headers)
 
-                investment_handler.add_stock_price(stock_, headers)
+                investment_handler.att_price_yahoo(stock_, headers)
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
                 print(f"Erro ao atualizar {bdr['url']} - {e}")
@@ -97,7 +97,7 @@ class AttStocks(Interceptor):
 
                 http_repository.update("stocks", ["ticker"], stock_, headers)
 
-                investment_handler.add_stock_price(stock_, headers)
+                investment_handler.att_price_yahoo(stock_, headers)
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
                 print(f"Erro ao atualizar {bdr['ticker']} - {bdr['name']} - {e}")
@@ -130,8 +130,7 @@ class AttStocks(Interceptor):
                         pass
 
                 http_repository.update("stocks", ["ticker"], stock_, headers)
-
-                investment_handler.add_stock_price(stock_, headers)
+                investment_handler.att_price_yahoo(stock_, headers)
 
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
@@ -147,7 +146,7 @@ class AttStocks(Interceptor):
                 http_repository.update("stocks", ["ticker"], stock_, headers)
 
                 stock_['price'] = float(stock_['price'])
-                investment_handler.add_stock_price(stock_, headers)
+                investment_handler.att_price_yahoo(stock_, headers)
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
                 print(f"Erro ao atualizar {fundo['ticker']} - {fundo['name']} - {e}")
