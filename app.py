@@ -160,7 +160,6 @@ def att_prices_thr(headers):
     time.sleep(1)
     balancer.lock_unlock('invest')
     att_stocks.att_prices(headers)
-    att_stocks.att_prices(headers, True)
     balancer.lock_unlock('invest', False)
 
 

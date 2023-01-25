@@ -164,15 +164,35 @@ class InvestmentHandler(Interceptor):
             values[key] = args[key]
         return http_repository.get_objects("user_stocks", filters, values, headers)
 
-    def att_price_yahoo(self, stock_, headers):
+    def att_prices_yahoo(self, stock_, headers, period, interval):
+        try:
+            prices = requests.get(url_bff +
+                                  'yahoofinance/prices-br/' + stock_['ticker'] + '/' + period + '/' + interval,
+                                  headers=headers).json()
+            for price in prices['data']:
+                try:
+                    stock_['price'] = price['open']
+
+                    self.add_stock_price(stock_, headers,
+                                         datetime.strptime(price['date'], '%Y-%m-%dT%H:%M:%S.%fZ')
+                                         .replace(tzinfo=timezone.utc)
+                                         .strftime('%Y-%m-%d %H:%M:%S'))
+                except Exception as e:
+                    print(e)
+                    pass
+        except Exception as e:
+            print(e)
+            pass
+
+    def att_price_yahoo(self, stock_, headers, date=None):
         try:
             prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock_['ticker'], headers=headers) \
                 .json()
             stock_['price'] = prices['price']['regularMarketPrice']
-            self.add_stock_price(stock_, headers)
+            self.add_stock_price(stock_, headers, date)
         except:
             try:
-                self.add_stock_price(stock_, headers)
+                self.add_stock_price(stock_, headers, date)
             except:
                 pass
             pass

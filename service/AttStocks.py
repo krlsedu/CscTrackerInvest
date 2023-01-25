@@ -180,7 +180,10 @@ class AttStocks(Interceptor):
             print(f"Atualizando a {type}: {stock['ticker']}")
             stock_ = investment_handler.get_stock(stock['ticker'], headers)
             stock['price'] = stock_['price']
-        investment_handler.att_stock_price_new(headers, daily, stock, stock_, type)
+        if type == 'fundo':
+            investment_handler.att_stock_price_new(headers, daily, stock, stock_, type)
+        else:
+            investment_handler.att_prices_yahoo(stock_, headers, "1d", "15m")
 
     def update_stock(self, headers, stock):
         if stock['investment_type'] == 2:
