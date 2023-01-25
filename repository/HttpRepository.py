@@ -13,8 +13,6 @@ headers_sti = {
 
 url_repository = 'http://bff:8080/repository/'
 
-url_bff = 'http://bff:8080/'
-
 
 class HttpRepository(Interceptor):
     def __init__(self):
@@ -135,14 +133,6 @@ class HttpRepository(Interceptor):
             except Exception as e:
                 print(e)
                 pass
-        try:
-            prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock['ticker'], headers=headers).json()
-            stock['price'] = prices['price']['regularMarketPrice']
-            requests.post(url_repository + 'stocks', headers=headers,
-                          params={"ticker": stock['ticker']}, json=stock)
-        except Exception as e:
-            print(e)
-            pass
         investment_type = requests.get(url_repository + 'single/investment_types',
                                        params={"id": stock['investment_type_id']}, headers=headers).json()
         return stock, investment_type

@@ -1,8 +1,10 @@
+
 import json
 from datetime import timedelta, datetime, timezone
 
 import pandas as pd
 import pytz
+import requests
 
 from repository.HttpRepository import HttpRepository
 from service.DividendHandler import DividendHandler
@@ -21,6 +23,7 @@ dividend_handler = DividendHandler()
 request_handler = RequestHandler()
 utils = Utils()
 
+url_bff = 'http://bff:8080/'
 
 class InvestmentHandler(Interceptor):
     def __init__(self):
@@ -176,6 +179,15 @@ class InvestmentHandler(Interceptor):
                     stock['ticker'] = ticker_
                     stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
                     stock_, investment_type = http_repository.get_values_by_ticker(stock_, False, headers)
+
+                    try:
+                        prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock['ticker'], headers=headers).json()
+                        stock['price'] = prices['price']['regularMarketPrice']
+
+                        self.add_stock_price(stock_, headers)
+                    except Exception as e:
+                        print(e)
+                        pass
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \
