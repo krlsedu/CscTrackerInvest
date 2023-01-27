@@ -26,7 +26,7 @@ class StocksHandler(Interceptor):
         else:
             liquidez = float(liquidez)
         keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name', 'investment_type_id',
-                'url_infos', 'ev/ebitda as ev_ebit']
+                'url_infos', 'ev_ebit']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
         select_ = f"select " \
                   f"    {ks} " \
@@ -38,14 +38,10 @@ class StocksHandler(Interceptor):
                   f"    and rank_pl > 0  " \
                   f"    and pl >= 0  " \
                   f"    and pvp >= 0  " \
-                  f"    and (ev_ebit > 0 or investment_type_id = 4)" \
+                  f"    and (ev_ebit > 0)" \
                   f"    and avg_liquidity > {liquidez} " \
-                  f"    and ev is not null " \
-                  f"    and ev > 0 " \
-                  f"    and ebitda is not null " \
-                  f"    and ebitda > 0 " \
                   f"order by " \
-                  f"    ev/ebitda, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
+                  f"    ev_ebit, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
         objects = http_repository.execute_select(select_, headers)
         stocks = []
         rank = 1

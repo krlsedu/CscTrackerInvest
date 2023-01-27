@@ -219,6 +219,17 @@ class InvestmentHandler(Interceptor):
             except Exception as e:
                 print(e)
                 stock_['ev'] = 0
+
+            if stock_['ev'] is None:
+                stock_['ev'] = 0
+            if stock_['ebitda'] is None:
+                stock_['ebitda'] = 0
+            if stock_['ebitda'] != 0:
+                stock_['ev_ebitda'] = stock_['ev'] / stock_['ebitda']
+            if stock_['ev_ebitda'] is None:
+                stock_['ev_ebitda'] = 0
+            if stock_['ev_ebit'] is None:
+                stock_['ev_ebit'] = 0
             self.add_stock_price(stock_, headers, date)
             http_repository.update("stocks", ["ticker"], stock_, headers)
         except Exception as e:
@@ -855,6 +866,9 @@ class InvestmentHandler(Interceptor):
         df['rank_pvp'] = df['pvp'].rank(ascending=True)
         df['rank_desv_dy'] = df['desv_dy'].rank(ascending=True)
         df['rank_pl'] = df['pl'].rank(ascending=True)
+        df['rank_pl'] = df['pl'].rank(ascending=True)
+        df['rank_ev_ebit'] = df['ev_ebit'].rank(ascending=True)
+        df['rank_ev_ebitda'] = df['ev_ebitda'].rank(ascending=True)
 
         return json.loads(df.to_json(orient="records"))
 
