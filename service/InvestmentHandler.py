@@ -665,14 +665,14 @@ class InvestmentHandler(Interceptor):
             ticker_perc_max_ideal = 1
         elif type_ivest_id_ == 15:
             total_invested = types_sum[0]
-            perc_type_ideal = 0.15
+            perc_type_ideal = 0.14
             ticker_perc_max_ideal = 1
         elif type_ivest_id_ == 2:
             total_invested = types_sum[type_ivest_id_]
             perc_type_ideal = 0.30
         else:
             total_invested = types_sum[1] + types_sum[4]
-            perc_type_ideal = 0.05
+            perc_type_ideal = 0.06
 
         perc_refer = 'ticker_weight_in_all'
         stock_['buy_sell_indicator'] = "neutral"
