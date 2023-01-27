@@ -1,8 +1,6 @@
 import time
 from threading import Thread
 
-import requests
-
 
 class Interceptor:
     def __getattribute__(self, name):
@@ -25,8 +23,8 @@ class Interceptor:
         metrics = {'clazz': clazz, 'method': methodName, 'executionTime': execution_time,
                    'appName': 'CscTrackerInvest', 'fullClassName': className}
 
-        response = requests.post('http://metrics-service:5000/metric', json=metrics)
-        if response.status_code != 200:
-            print(metrics, response.status_code)
-            print(f'Error sending metrics: {response.text}')
-        pass
+        # response = requests.post('http://metrics_service:5050/metric', json=metrics)
+        # if response.status_code != 200:
+        #     print(metrics, response.status_code)
+        #     print(f'Error sending metrics: {response.text}')
+        # pass

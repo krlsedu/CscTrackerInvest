@@ -190,10 +190,44 @@ class InvestmentHandler(Interceptor):
                 .json()
             stock_['price'] = prices['price']['regularMarketPrice']
             self.add_stock_price(stock_, headers, date)
+            http_repository.update("stocks", ["ticker"], stock_, headers)
         except:
             try:
                 self.add_stock_price(stock_, headers, date)
+                http_repository.update("stocks", ["ticker"], stock_, headers)
             except:
+                pass
+            pass
+
+    def att_info_yahoo(self, stock_, headers, date=None):
+        try:
+            prices = requests.get(url_bff + 'yahoofinance/info-br/' + stock_['ticker'], headers=headers) \
+                .json()
+
+            try:
+                stock_['price'] = prices['price']['regularMarketPrice']
+            except Exception as e:
+                print(e)
+                pass
+            try:
+                stock_['ebitda'] = prices['financial_data']['ebitda']
+            except Exception as e:
+                print(e)
+                stock_['ebitda'] = 0
+            try:
+                stock_['ev'] = prices['key_stats']['enterpriseValue']
+            except Exception as e:
+                print(e)
+                stock_['ev'] = 0
+            self.add_stock_price(stock_, headers, date)
+            http_repository.update("stocks", ["ticker"], stock_, headers)
+        except Exception as e:
+            print(e)
+            try:
+                self.add_stock_price(stock_, headers, date)
+                http_repository.update("stocks", ["ticker"], stock_, headers)
+            except Exception as e:
+                print(e)
                 pass
             pass
 
