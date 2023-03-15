@@ -28,20 +28,41 @@ class StocksHandler(Interceptor):
         keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name', 'investment_type_id',
                 'url_infos', 'ev_ebit']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
-        select_ = f"select " \
-                  f"    {ks} " \
-                  f"from " \
-                  f"    stocks " \
-                  f"where " \
-                  f"    investment_type_id = {type_}  " \
-                  f"    and rank_pvp > 0  " \
-                  f"    and rank_pl > 0  " \
-                  f"    and pl >= 0  " \
-                  f"    and pvp >= 0  " \
-                  f"    and (ev_ebit > 0)" \
-                  f"    and avg_liquidity > {liquidez} " \
-                  f"order by " \
-                  f"    ev_ebit, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
+        if type_ == 1:
+            select_ = f"select " \
+                      f"    {ks} " \
+                      f"from " \
+                      f"    stocks " \
+                      f"where " \
+                      f"    investment_type_id = {type_}  " \
+                      f"    and rank_pvp > 0  " \
+                      f"    and rank_pl > 0  " \
+                      f"    and pl >= 0  " \
+                      f"    and pvp >= 0  " \
+                      f"    and (ev_ebit > 0)" \
+                      f"    and avg_liquidity > {liquidez} " \
+                      f"order by " \
+                      f"    ev_ebit, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
+        else:
+            select_ = f"select " \
+                      f"    {ks} " \
+                      f"from " \
+                      f"    stocks " \
+                      f"where " \
+                      f"    investment_type_id = 4  " \
+                      f"    and rank_pvp > 0  " \
+                      f"    and rank_pl > 0  " \
+                      f"    and pl >= 0  " \
+                      f"    and pvp >= 0  " \
+                      f"    and ev is not null " \
+                      f"    and ev > 0 " \
+                      f"    and ebitda is not null " \
+                      f"    and ebitda > 0 " \
+                      f"    and dy > 0 " \
+                      f"    and avg_liquidity > {liquidez} " \
+                      f"order by " \
+                      f"    ev / ebitda, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
+
         objects = http_repository.execute_select(select_, headers)
         stocks = []
         rank = 1
