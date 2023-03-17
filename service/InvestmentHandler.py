@@ -671,18 +671,11 @@ class InvestmentHandler(Interceptor):
         great_gain_ = great_gain
         type_ivest_id_ = stock_['investment_type_id']
         total_invested = types_sum[type_ivest_id_]
+        perc_type_ideal = http_repository.get_object("perc_ideal_investment_type", ["investment_type_id"],
+                                                     type_ivest_id_, headers)['perc_ideal'] / 100
         if type_ivest_id_ == 16:
             total_invested = types_sum[0]
-            perc_type_ideal = 0.50
             ticker_perc_max_ideal = 1
-        elif type_ivest_id_ == 15:
-            perc_type_ideal = 0.10
-        elif type_ivest_id_ == 2:
-            perc_type_ideal = 0.30
-        elif type_ivest_id_ == 1:
-            perc_type_ideal = 0.07
-        elif type_ivest_id_ == 4:
-            perc_type_ideal = 0.03
 
         perc_refer = 'ticker_weight_in_all'
         stock_['buy_sell_indicator'] = "neutral"
