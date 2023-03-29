@@ -204,7 +204,7 @@ class InvestmentHandler(Interceptor):
             prices = requests.get(url_bff + 'yahoofinance/price/' + stock_['ticker'], headers=headers) \
                 .json()
             price_ = prices['price']['regularMarketPrice']
-            prices = requests.get(url_bff + 'yahoofinance/price/BRL=x', headers=headers) \
+            prices = requests.get(url_bff + 'yahoofinance/price/BRL=X', headers=headers) \
                 .json()
             price_ = price_ * prices['price']['regularMarketPrice']
             stock_['price'] = price_
