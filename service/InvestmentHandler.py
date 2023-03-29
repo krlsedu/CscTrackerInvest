@@ -798,6 +798,7 @@ class InvestmentHandler(Interceptor):
                 sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_['perc_atu'])
                 stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec)
             else:
+                stock_['buy_sell_indicator'] = "sell"
                 stock_['recommendation'] = "Sell all - strategy"
 
     def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br, founds, fix_income, criptos):
