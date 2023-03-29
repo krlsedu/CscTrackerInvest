@@ -22,7 +22,7 @@ dividend_handler = DividendHandler()
 request_handler = RequestHandler()
 utils = Utils()
 
-url_bff = 'http://bff:8080/'
+url_bff = 'http://192.168.15.48:8101/'
 
 
 class InvestmentHandler(Interceptor):
@@ -199,6 +199,25 @@ class InvestmentHandler(Interceptor):
                 pass
             pass
 
+    def att_price_yahoo_us(self, stock_, headers, date=None):
+        try:
+            prices = requests.get(url_bff + 'yahoofinance/price/' + stock_['ticker'], headers=headers) \
+                .json()
+            price_ = prices['price']['regularMarketPrice']
+            prices = requests.get(url_bff + 'yahoofinance/price/BRL=x', headers=headers) \
+                .json()
+            price_ = price_ * prices['price']['regularMarketPrice']
+            stock_['price'] = price_
+            self.add_stock_price(stock_, headers, date)
+            http_repository.update("stocks", ["ticker"], stock_, headers)
+        except:
+            try:
+                self.add_stock_price(stock_, headers, date)
+                http_repository.update("stocks", ["ticker"], stock_, headers)
+            except:
+                pass
+            pass
+
     def att_info_yahoo(self, stock_, headers, date=None):
         try:
             prices = requests.get(url_bff + 'yahoofinance/info-br/' + stock_['ticker'], headers=headers) \
@@ -257,8 +276,10 @@ class InvestmentHandler(Interceptor):
                     stock['ticker'] = ticker_
                     stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
                     stock_, investment_type = http_repository.get_values_by_ticker(stock_, False, headers)
-
-                    self.att_price_yahoo(stock_, headers)
+                    if investment_type['id'] == 100:
+                        self.att_price_yahoo_us(stock_, headers)
+                    else:
+                        self.att_price_yahoo(stock_, headers)
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \
@@ -376,7 +397,8 @@ class InvestmentHandler(Interceptor):
         fiis = fii_handler.get_fiis(headers, args)
         founds = stock_handler.get_founds(15, headers)
         fix_income = stock_handler.get_founds(16, headers)
-        return stocks_br, bdrs, fiis, founds, fix_income
+        criptos = stock_handler.get_founds(100, headers)
+        return stocks_br, bdrs, fiis, founds, fix_income, criptos
 
     def buy_sell_indication(self, args=None, headers=None):
         infos = self.get_stocks_consolidated(args, headers)
@@ -404,7 +426,7 @@ class InvestmentHandler(Interceptor):
         infos['resume'] = {}
         infos['resume']['total_value_atu'] = total_value_atu
         infos['resume']['total_value_invest'] = total_value_invest
-        stocks_br, bdrs, fiis, founds, fix_income = self.get_sotcks_infos(args, headers)
+        stocks_br, bdrs, fiis, founds, fix_income, criptos = self.get_sotcks_infos(args, headers)
         stock_ref = None
         for stock in stocks:
             stock_ = stock
@@ -426,12 +448,16 @@ class InvestmentHandler(Interceptor):
         for stock in fix_income:
             stock_ref = stock
             self.set_buy_sell_info(stock, stock_ref, types_sum, stocks, headers)
+        for stock in criptos:
+            stock_ref = stock
+            self.set_buy_sell_info(stock, stock_ref, types_sum, stocks, headers)
         infos['stocks'] = stocks
         infos['stocks_br'] = stocks_br
         infos['bdrs'] = bdrs
         infos['fiis'] = fiis
         infos['founds'] = founds
         infos['fix_income'] = fix_income
+        infos['criptos'] = criptos
         infos['types_count'] = types_sum['types_count']
         infos = self.add_total_dividends_info(infos, headers)
         infos = self.add_total_daily_gain(infos, headers)

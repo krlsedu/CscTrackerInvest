@@ -16,6 +16,8 @@ class AttStocks(Interceptor):
         self.att_fiis(headers)
         print("Atualizando acoes")
         self.att_acoes(headers)
+        print("Atualizando Criptos")
+        self.att_criptos(headers)
         print("Atualizando fundos")
         self.att_fundos(headers)
         print("Atualizando bdrs")
@@ -29,6 +31,8 @@ class AttStocks(Interceptor):
         self.att_fiis(headers, True)
         print("Atualizando acoes")
         self.att_acoes(headers, True)
+        print("Atualizando Criptos")
+        self.att_criptos(headers)
         print("Atualizando fundos")
         self.att_fundos(headers)
         print("Atualizando BDRs")
@@ -59,6 +63,20 @@ class AttStocks(Interceptor):
                     except Exception as e:
                         pass
                     investment_handler.att_price_yahoo(stock_, headers)
+
+                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+            except Exception as e:
+                print(f"Erro ao atualizar {acao['ticker']} - {e}")
+        return acoes
+
+    def att_criptos(self, headers=None, full=False):
+        acoes = http_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 100}, headers)
+        for acao in acoes:
+            try:
+                print(f"Atualizando cripto: {acao['ticker']}")
+                stock_ = investment_handler.get_stock(acao['ticker'], headers)
+
+                investment_handler.att_price_yahoo_us(stock_, headers)
 
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
