@@ -463,7 +463,21 @@ class InvestmentHandler(Interceptor):
         infos = self.add_total_dividends_info(infos, headers)
         infos = self.add_total_daily_gain(infos, headers)
         infos = self.add_total_profit_loss_info(infos, headers, args)
+        self.save_type_gruped(infos, headers)
+        self.save_resume(infos, headers)
         return infos
+
+    def save_type_gruped(self, infos, headers=None):
+        type_grouped = infos['type_grouped']
+        for type_ in type_grouped:
+            type_['id'] = type_['type_id']
+            http_repository.update("type_gruped_values", ["id"], type_, headers)
+
+    def save_resume(self, infos, headers=None):
+        resume = infos['resume']
+        resume['id'] = 9999
+        resume['type_id'] = 9999
+        http_repository.update("resume_values", ["id"], resume, headers)
 
     def add_dividend_info(self, stock, headers=None):
         stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
