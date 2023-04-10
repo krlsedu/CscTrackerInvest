@@ -468,8 +468,8 @@ class InvestmentHandler(Interceptor):
         infos['criptos'] = criptos
         infos['types_count'] = types_sum['types_count']
         infos = self.add_total_dividends_info(infos, headers)
-        infos = self.add_total_daily_gain(infos, headers)
         infos = self.add_total_profit_loss_info(infos, headers, args)
+        infos = self.add_total_daily_gain(infos, headers)
         self.save_type_gruped(infos, headers)
         self.save_resume(infos, headers)
         self.save_infos(infos, headers)
@@ -564,7 +564,11 @@ class InvestmentHandler(Interceptor):
         infos['resume']['gain'] = infos['resume']['total_value_atu'] / infos['resume']['total_value_invest'] - 1
         infos['resume']['daily_gain'] = infos['resume']['gain'] / float(avg_days)
         infos['resume']['daily_dyr'] = infos['resume']['dyr'] / float(avg_days)
-        infos['resume']['daily_total_gain'] = infos['resume']['daily_dyr'] + infos['resume']['daily_gain']
+        profits_r = (infos['resume']['profits'] - infos['resume']['losses']) / infos['resume']['total_value_atu']
+        infos['resume']['daily_flr'] = profits_r / float(avg_days)
+        infos['resume']['daily_total_gain'] = infos['resume']['daily_dyr'] + \
+                                              infos['resume']['daily_gain'] + \
+                                              infos['resume']['daily_flr']
         infos['resume']['monthly_gain'] = (infos['resume']['daily_total_gain'] + float(1)) ** float(30) - float(1)
 
         infos['resume']['total_gain'] = infos['resume']['dyr'] + infos['resume']['gain']
