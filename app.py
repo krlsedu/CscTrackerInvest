@@ -136,7 +136,7 @@ def get_investments_tr(args, headers):
         request_handler.inform_to_client("Investments refresh requested", "investments", headers,
                                          "Investments refresh requested")
         consolidated = investment_handler.buy_sell_indication(args, headers)
-        request_handler.inform_to_client(consolidated, "investments", headers, "Investments refresh completed")
+        request_handler.inform_to_client("{}", "investments", headers, "Investments refresh completed")
         consolidated = json.dumps(consolidated, cls=Encoder, ensure_ascii=False)
         balancer.lock_unlock('invest', False)
         return consolidated, 200, {'Content-Type': 'application/json'}
