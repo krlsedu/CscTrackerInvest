@@ -1,3 +1,4 @@
+import decimal
 import json
 from datetime import timedelta, datetime, timezone
 
@@ -22,7 +23,13 @@ dividend_handler = DividendHandler()
 request_handler = RequestHandler()
 utils = Utils()
 
-url_bff = 'http://192.168.15.48:8101/'
+url_bff = 'http://bff:8080/'
+
+
+class Encoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
 
 
 class InvestmentHandler(Interceptor):
@@ -465,6 +472,7 @@ class InvestmentHandler(Interceptor):
         infos = self.add_total_profit_loss_info(infos, headers, args)
         self.save_type_gruped(infos, headers)
         self.save_resume(infos, headers)
+        self.save_infos(infos, headers)
         return infos
 
     def save_type_gruped(self, infos, headers=None):
@@ -478,6 +486,20 @@ class InvestmentHandler(Interceptor):
         resume['id'] = 9999
         resume['type_id'] = 9999
         http_repository.update("resume_values", ["id"], resume, headers)
+
+    def save_infos(self, infos, headers=None):
+        resume = None
+        try:
+            resume = http_repository.get_object("investments_calc_resume", [], {}, headers)
+        except:
+            pass
+        j_infos = json.dumps(infos, cls=Encoder, ensure_ascii=False)
+        if resume is None:
+            resume = {'resume': j_infos}
+            http_repository.insert("investments_calc_resume", resume, headers)
+        else:
+            resume['resume'] = j_infos
+            http_repository.update("investments_calc_resume", ["id"], resume, headers)
 
     def add_dividend_info(self, stock, headers=None):
         stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
