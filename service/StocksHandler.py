@@ -22,7 +22,7 @@ class StocksHandler(Interceptor):
             args = request.args
         liquidez = args.get('avg_liquidity')
         if liquidez is None:
-            liquidez = 500000
+            liquidez = 250000
         else:
             liquidez = float(liquidez)
         keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name', 'investment_type_id',

@@ -26,7 +26,7 @@ class FiiHandler(Interceptor):
             args = request.args
         liquidez = args.get('metric')
         if liquidez is None:
-            liquidez = 500000
+            liquidez = 250000
         else:
             liquidez = float(liquidez)
 
