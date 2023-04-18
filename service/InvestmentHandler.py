@@ -547,16 +547,16 @@ class InvestmentHandler(Interceptor):
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
             delta = datetime.now().astimezone(tz=timezone.utc) - date_
-            days += delta.days * movement['quantity']
-            quantity += movement['quantity']
+            days += delta.days * (movement['quantity'] * movement['price'])
+            quantity += (movement['quantity'] * movement['price'])
         filter_['movement_type'] = 2
         movements = http_repository.get_objects("user_stocks_movements",
                                                 ["user_id", "movement_type"], filter_, headers)
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
             delta = datetime.now().astimezone(tz=timezone.utc) - date_
-            days -= delta.days * movement['quantity']
-            quantity -= movement['quantity']
+            days -= delta.days * (movement['quantity'] * movement['price'])
+            quantity -= (movement['quantity'] * movement['price'])
 
         avg_days = days / quantity
         if avg_days is None or avg_days < 1:
