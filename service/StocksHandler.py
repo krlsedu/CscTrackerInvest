@@ -59,7 +59,7 @@ class StocksHandler(Interceptor):
                       f"    and ebitda is not null " \
                       f"    and ebitda > 0 " \
                       f"    and dy > 0 " \
-                      f"    and avg_liquidity > {liquidez} " \
+                      f"    and avg_liquidity > 100000 " \
                       f"order by " \
                       f"    ev / ebitda, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
 
