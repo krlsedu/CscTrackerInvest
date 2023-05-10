@@ -184,89 +184,30 @@ class AttStocks(Interceptor):
         self.att_prices_generic(headers, bdrs, 'bdr', daily)
 
     def att_dividends_info(self, headers):
-        my_stocks = http_repository.get_objects("user_stocks", [], {}, headers)
+        my_stocks = http_repository.get_objects("stocks", [], {}, headers)
+        counter = 0
         for stock in my_stocks:
+            counter += 1
+            stock_ = stock
+
+            print(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
+                  f"{counter}/{len(my_stocks)}")
+            self.dividends_map_info(headers, stock_)
+
+    def att_user_dividends_info(self, headers):
+        my_stocks = http_repository.get_objects("user_stocks", [], {}, headers)
+        counter = 0
+        for stock in my_stocks:
+            counter += 1
             stock_ = http_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
-            if stock_['investment_type_id'] == 1 or \
-                    stock_['investment_type_id'] == 4 or \
-                    stock_['investment_type_id'] == 2:
-                print(f"Atualizando mapa de dividendos de {stock_['ticker']}")
-                url = None
-                status_invest = True
-                if stock_['investment_type_id'] == 1:
-                    url = f"https://statusinvest.com.br/acoes/{stock_['ticker']}"
-                elif stock_['investment_type_id'] == 4:
-                    url = f"https://statusinvest.com.br/bdrs/{stock_['ticker']}"
-                elif stock_['investment_type_id'] == 2:
-                    url = f"https://statusinvest.com.br/fundos-imobiliarios/{stock_['ticker']}"
-                try:
-                    soup = http_repository.get_soup(url, headers)
-                    table = None
-                    if status_invest:
-                        table = soup.find('div', {'id': 'earning-section'})
-                    else:
-                        table = soup.find('table', {'id': 'table-dividends-history'})
-                    if status_invest:
-                        rows = table.find('input', {'id': 'results'})
-                        rows = rows.get('value')
-                        rows = json.loads(rows)
-                    else:
-                        rows = table.find_all('tr')
+            # generate log of progress of stock processing with overal progress
+            print(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
+                  f"{counter}/{len(my_stocks)}")
+            self.dividends_map_info(headers, stock_)
 
-                    for row in rows:
-                        finded = False
-                        date_with = None
-                        date_pay = None
-                        value = None
-                        _type = None
-                        if status_invest:
-                            value = row['v']
-                            date_with = row['ed']
-                            date_pay = row['pd']
-                            _type = row['et']
-                            finded = True
-                        else:
-                            cells = row.find_all('td')
-                            if len(cells) > 0:
-                                _type = cells[0].text
-                                date_with = cells[1].text
-                                date_pay = cells[2].text
-                                value = cells[3].text
-                                value = self.convert_pt_br_number_to_db_number(value)
-                                finded = True
-                        if finded:
-                            if _type == 'Rendimento' or _type == 'REND. TRIBUTADO':
-                                _type = 3
-                            elif _type == 'Juros sobre Capital Próprio' or _type == 'JSCP':
-                                _type = 2
-                            else:
-                                _type = 1
-                            date_with = self.convert_pt_br_date_to_db_date(date_with)
-                            date_pay = self.convert_pt_br_date_to_db_date(date_pay)
-                            dividend_map = {"investment_id": stock_['id'],
-                                            "date_with": date_with,
-                                            "date_payment": date_pay,
-                                            "type_id": _type}
-                            dividend_map = http_repository.get_object("dividends_map", ["investment_id", "date_with",
-                                                                                        "date_payment", "type_id"],
-                                                                      dividend_map, headers)
-                            if dividend_map is None:
-                                dividend_map = {"investment_id": stock_['id'],
-                                                "date_with": date_with,
-                                                "date_payment": date_pay,
-                                                "type_id": _type,
-                                                "value_per_quote": value}
-                                http_repository.insert("dividends_map", dividend_map, headers)
-                            else:
-                                dividend_map['value_per_quote'] = value
-                                http_repository.update("dividends_map", ["id"],
-                                                       dividend_map, headers)
+        self.dividends_info(headers)
 
-                except Exception as e:
-                    print("Erro ao atualizar dividendos de " + stock_['ticker'])
-                    print(e)
-                    pass
-
+    def dividends_info(self, headers):
         my_stocks = http_repository.get_objects("user_stocks", [], {}, headers)
         for stock in my_stocks:
             stock_ = http_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
@@ -306,6 +247,86 @@ class AttStocks(Interceptor):
                     print("Erro ao atualizar dividendos de " + stock_['ticker'])
                     print(e)
                     pass
+
+    def dividends_map_info(self, headers, stock_):
+        if stock_['investment_type_id'] == 1 or \
+                stock_['investment_type_id'] == 4 or \
+                stock_['investment_type_id'] == 2:
+            url = None
+            status_invest = True
+            if stock_['investment_type_id'] == 1:
+                url = f"https://statusinvest.com.br/acoes/{stock_['ticker']}"
+            elif stock_['investment_type_id'] == 4:
+                url = f"https://statusinvest.com.br/bdrs/{stock_['ticker']}"
+            elif stock_['investment_type_id'] == 2:
+                url = f"https://statusinvest.com.br/fundos-imobiliarios/{stock_['ticker']}"
+            try:
+                soup = http_repository.get_soup(url, headers)
+                table = None
+                if status_invest:
+                    table = soup.find('div', {'id': 'earning-section'})
+                else:
+                    table = soup.find('table', {'id': 'table-dividends-history'})
+                if status_invest:
+                    rows = table.find('input', {'id': 'results'})
+                    rows = rows.get('value')
+                    rows = json.loads(rows)
+                else:
+                    rows = table.find_all('tr')
+
+                for row in rows:
+                    finded = False
+                    date_with = None
+                    date_pay = None
+                    value = None
+                    _type = None
+                    if status_invest:
+                        value = row['v']
+                        date_with = row['ed']
+                        date_pay = row['pd']
+                        _type = row['et']
+                        finded = True
+                    else:
+                        cells = row.find_all('td')
+                        if len(cells) > 0:
+                            _type = cells[0].text
+                            date_with = cells[1].text
+                            date_pay = cells[2].text
+                            value = cells[3].text
+                            value = self.convert_pt_br_number_to_db_number(value)
+                            finded = True
+                    if finded:
+                        if _type == 'Rendimento' or _type == 'REND. TRIBUTADO':
+                            _type = 3
+                        elif _type == 'Juros sobre Capital Próprio' or _type == 'JSCP':
+                            _type = 2
+                        else:
+                            _type = 1
+                        date_with = self.convert_pt_br_date_to_db_date(date_with)
+                        date_pay = self.convert_pt_br_date_to_db_date(date_pay)
+                        dividend_map = {"investment_id": stock_['id'],
+                                        "date_with": date_with,
+                                        "date_payment": date_pay,
+                                        "type_id": _type}
+                        dividend_map = http_repository.get_object("dividends_map", ["investment_id", "date_with",
+                                                                                    "date_payment", "type_id"],
+                                                                  dividend_map, headers)
+                        if dividend_map is None:
+                            dividend_map = {"investment_id": stock_['id'],
+                                            "date_with": date_with,
+                                            "date_payment": date_pay,
+                                            "type_id": _type,
+                                            "value_per_quote": value}
+                            http_repository.insert("dividends_map", dividend_map, headers)
+                        else:
+                            dividend_map['value_per_quote'] = value
+                            http_repository.update("dividends_map", ["id"],
+                                                   dividend_map, headers)
+
+            except Exception as e:
+                print("Erro ao atualizar dividendos de " + stock_['ticker'])
+                print(e)
+                pass
 
     def convert_pt_br_number_to_db_number(self, number):
         if number is None or number == '':
