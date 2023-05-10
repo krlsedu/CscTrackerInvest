@@ -192,20 +192,21 @@ class AttStocks(Interceptor):
                     stock_['investment_type_id'] == 2:
                 print(f"Atualizando mapa de dividendos de {stock_['ticker']}")
                 url = None
+                status_invest = True
                 if stock_['investment_type_id'] == 1:
-                    url = f"https://investidor10.com.br/acoes/{stock_['ticker']}"
+                    url = f"https://statusinvest.com.br/acoes/{stock_['ticker']}"
                 elif stock_['investment_type_id'] == 4:
                     url = f"https://statusinvest.com.br/bdrs/{stock_['ticker']}"
                 elif stock_['investment_type_id'] == 2:
-                    url = f"https://investidor10.com.br/fiis/{stock_['ticker']}"
-                soup = http_repository.get_soup(url, headers)
-                table = None
-                if stock_['investment_type_id'] == 4:
-                    table = soup.find('div', {'id': 'earning-section'})
-                else:
-                    table = soup.find('table', {'id': 'table-dividends-history'})
+                    url = f"https://statusinvest.com.br/fundos-imobiliarios/{stock_['ticker']}"
                 try:
-                    if stock_['investment_type_id'] == 4:
+                    soup = http_repository.get_soup(url, headers)
+                    table = None
+                    if status_invest:
+                        table = soup.find('div', {'id': 'earning-section'})
+                    else:
+                        table = soup.find('table', {'id': 'table-dividends-history'})
+                    if status_invest:
                         rows = table.find('input', {'id': 'results'})
                         rows = rows.get('value')
                         rows = json.loads(rows)
@@ -218,7 +219,7 @@ class AttStocks(Interceptor):
                         date_pay = None
                         value = None
                         _type = None
-                        if stock_['investment_type_id'] == 4:
+                        if status_invest:
                             value = row['v']
                             date_with = row['ed']
                             date_pay = row['pd']
@@ -234,7 +235,7 @@ class AttStocks(Interceptor):
                                 value = self.convert_pt_br_number_to_db_number(value)
                                 finded = True
                         if finded:
-                            if _type == 'Rendimento':
+                            if _type == 'Rendimento' or _type == 'REND. TRIBUTADO':
                                 _type = 3
                             elif _type == 'Juros sobre Capital Próprio' or _type == 'JSCP':
                                 _type = 2
