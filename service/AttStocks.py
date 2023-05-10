@@ -280,7 +280,7 @@ class AttStocks(Interceptor):
                     select = f"select " \
                              f"coalesce(sum(case when movement_type = 1 then quantity else -quantity end),0) as quantity " \
                              f"from user_stocks_movements where investment_id = {dividend_map['investment_id']} " \
-                             f"and date <= '{dividend_map['date_with']}'"
+                             f"and date <= '{dividend_map['date_with']} 23:59:59'"
                     quantity = http_repository.execute_select(select, headers)[0]['quantity']
                     if quantity > 0:
                         dividend = {"dividends_map_id": dividend_map['id']}
