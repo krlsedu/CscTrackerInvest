@@ -156,6 +156,14 @@ def att_prices():
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/att-dividends-info', methods=['POST'])
+def att_dividends_info():
+    print('att-dividends-info requested')
+    headers = request.headers
+    att_stocks.att_dividends_info(headers)
+    return "{}", 200, {'Content-Type': 'application/json'}
+
+
 def att_prices_thr(headers):
     time.sleep(1)
     balancer.lock_unlock('invest')

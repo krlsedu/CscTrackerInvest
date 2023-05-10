@@ -114,6 +114,10 @@ class HttpRepository(Interceptor):
         page = requests.get(f"https://statusinvest.com.br{stock['url_infos']}", headers=headers_sti)
         return page.text
 
+    def get_page_text_by_url(self, url, headers=None):
+        page = requests.get(f"{url}", headers=headers_sti)
+        return page.text
+
     def get_values_by_ticker(self, stock, force=False, headers=None):
         try:
             last_update = datetime.strptime(stock['last_update'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
@@ -136,6 +140,11 @@ class HttpRepository(Interceptor):
         investment_type = requests.get(url_repository + 'single/investment_types',
                                        params={"id": stock['investment_type_id']}, headers=headers).json()
         return stock, investment_type
+
+    def get_soup(self, url, headers=None):
+        text = self.get_page_text_by_url(url, headers)
+        soup = BeautifulSoup(text, "html5lib")
+        return soup
 
     def get_values(self, soup, stock):
         values = []
