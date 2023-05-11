@@ -37,6 +37,20 @@ class HttpRepository(Interceptor):
         except Exception as e:
             raise e
 
+    def delete_all(self, table, headers=None):
+        self.delete(table, [], {}, headers)
+
+    def delete(self, table, keys=[], data={}, headers=None):
+        params = {}
+        for key in keys:
+            params[key] = data[key]
+        try:
+            response = requests.post(url_repository + "delete/" + table, headers=headers, json=data, params=params)
+            if response.status_code < 200 or response.status_code > 299:
+                raise Exception(f'Error deleting data: {response.text}')
+        except Exception as e:
+            raise e
+
     def get_stock_type(self, ticker, headers=None):
         response = requests.get('https://statusinvest.com.br/home/mainsearchquery', params={"q": ticker},
                                 headers=headers_sti)
@@ -66,6 +80,9 @@ class HttpRepository(Interceptor):
             return response.json()
         except Exception as e:
             raise e
+
+    def get_all_objects(self, table, headers=None):
+        return self.get_objects(table, [], {}, headers)
 
     def get_objects(self, table, keys=[], data={}, headers=None):
         params = {}

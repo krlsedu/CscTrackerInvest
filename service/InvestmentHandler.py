@@ -473,7 +473,49 @@ class InvestmentHandler(Interceptor):
         self.save_type_gruped(infos, headers)
         self.save_resume(infos, headers)
         self.save_infos(infos, headers)
+        self.save_recomendations_info(infos, headers)
         return infos
+
+    def save_recomendations_info(self, info, headers=None):
+        try:
+            _ = http_repository.get_all_objects("user_recomendations", headers)
+            if len(_) > 0:
+                http_repository.delete_all("user_recomendations", headers)
+            self.save_recomendations(info['stocks_br'], headers)
+            self.save_recomendations(info['bdrs'], headers)
+            self.save_recomendations(info['fiis'], headers)
+            self.save_recomendations(info['founds'], headers)
+            self.save_recomendations(info['fix_income'], headers)
+            self.save_recomendations(info['criptos'], headers)
+        except Exception as e:
+            print(e)
+            pass
+
+    def save_recomendations(self, recomendations, headers=None):
+        for recomendation in recomendations:
+            recomendation["investment_id"] = \
+                http_repository.get_object("stocks", ["ticker"], recomendation, headers)['id']
+            try:
+                del recomendation['name']
+            except:
+                pass
+            try:
+                del recomendation['url_infos']
+            except:
+                pass
+            try:
+                del recomendation['url_fundamentos']
+            except:
+                pass
+            try:
+                del recomendation['url_statusinvest']
+            except:
+                pass
+            try:
+                http_repository.insert("user_recomendations", recomendation, headers)
+            except Exception as e:
+                print(e)
+                pass
 
     def save_type_gruped(self, infos, headers=None):
         type_grouped = infos['type_grouped']
