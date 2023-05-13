@@ -79,6 +79,30 @@ def get_founds():
     return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/investment-fact', methods=['POST'])
+@cross_origin()
+def investment_fact():
+    headers = request.headers
+    dumps = json.dumps(investment_handler.investment_fact(request.get_json(), headers))
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/investment-calc', methods=['POST'])
+@cross_origin()
+def investment_cal():
+    headers = request.headers
+    dumps = json.dumps(investment_handler.investment_calc(request.get_json(), headers))
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/last-investment-calc', methods=['GET'])
+@cross_origin()
+def last_investment_cal():
+    headers = request.headers
+    dumps = json.dumps(investment_handler.last_investment_calc(headers))
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
 @app.route('/investment-movement', methods=['POST'])
 @cross_origin()
 def add_movement():
@@ -162,6 +186,7 @@ def att_user_dividends_info():
     headers = request.headers
     att_stocks.att_user_dividends_info(headers)
     return "{}", 200, {'Content-Type': 'application/json'}
+
 
 @app.route('/att-map-dividends', methods=['POST'])
 def att_dividends_info():
