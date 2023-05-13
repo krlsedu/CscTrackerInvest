@@ -1117,13 +1117,21 @@ class InvestmentHandler(Interceptor):
                     total_amount_stock = total_amount_stock + amount
                     amount_stocks.append({'investment_id': user_recomendation['investment_id'], 'amount': amount,
                                           'user_invest_apply_id': user_invest_apply['id']})
+            amount_stocks_ajust = []
+            amount_ajsut = 0
             for amount_stock in amount_stocks:
                 stock_ = \
                     http_repository.get_object("stocks", ["id"], {"id": amount_stock['investment_id']}, headers)
                 amount = amount_stock['amount']
-                if amount > stock_['price'] > 0:
+                if amount > stock_['price']:
                     amount_stock['amount'] = amount_type['amount'] * (amount / total_amount_stock)
-                    http_repository.insert("user_invest_apply_stock", amount_stock, headers)
+                    if amount_stock['amount'] > stock_['price']:
+                        amount_ajsut = amount_ajsut + amount_stock['amount']
+                        amount_stocks_ajust.append(amount_stock)
+            if amount_ajsut > 0:
+                for ajsut in amount_stocks_ajust:
+                    ajsut['amount'] = amount_type['amount'] * (ajsut['amount'] / amount_ajsut)
+                    http_repository.insert("user_invest_apply_stock", ajsut, headers)
         return http_repository.get_objects("user_invest_apply_stock",
                                            ['user_invest_apply_id'], {'user_invest_apply_id': user_invest_apply['id']},
                                            headers)
