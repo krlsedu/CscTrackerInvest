@@ -320,8 +320,13 @@ class InvestmentHandler(Interceptor):
                                 self.att_stock_price_new(headers, False, stock_, stock_, "bdr", "1", True, dt_prc_ant)
                             pass
 
-                    stock_consolidated['segment'] = stock_['segment']
-                    segment['segment'] = stock_['segment']
+                    if stock_['segment_custom'] is not None:
+                        segment['segment'] = stock_['segment_custom']
+                        stock_consolidated['segment'] = stock_['segment_custom']
+                    else:
+                        stock_['segment_custom'] = stock_['segment']
+                        stock_consolidated['segment'] = stock_['segment']
+                        segment['segment'] = stock_['segment']
 
                     stock_consolidated['ticker'] = ticker_
                     stock_consolidated['investment_type_id'] = investment_type['id']
@@ -1171,12 +1176,22 @@ class InvestmentHandler(Interceptor):
             http_repository.get_object("stocks", ["id"], {"id": user_recomendation['investment_id']}, headers)
         user_stock = \
             http_repository.get_object("user_stocks", ["investment_id"], user_recomendation, headers)
+        if stock_['segment_custom'] is not None:
+            segment_ = stock_['segment_custom']
+        else:
+            segment_ = stock_["segment"]
+        user_segments_configs = \
+            http_repository.get_object("user_segments_configs", ["segment_name"], {"segment_name": segment_},
+                                       headers)
         if user_stock is not None:
             amount_atu = user_stock['quantity'] * stock_['price']
         else:
             amount_atu = 0
         amount = perc_ideal * resume['total_value_atu']
         amount = amount - amount_atu
+        if user_segments_configs is not None:
+            if user_segments_configs['ideal_prec_max'] <= user_recomendation['segment_weight_in_all'] * 100:
+                amount = 0
         return amount, stock_
 
     def last_investment_calc(self, headers=None):

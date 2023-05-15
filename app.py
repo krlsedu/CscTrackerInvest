@@ -119,7 +119,7 @@ def add_movements():
     headers = request.headers
     args = request.args
     dumps = json.dumps(investment_handler.add_movements(request.get_json(), headers))
-    get_investments()
+    # get_investments()
     return dumps, 200, {'Content-Type': 'application/json'}
 
 
