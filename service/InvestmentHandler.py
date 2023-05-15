@@ -1096,23 +1096,7 @@ class InvestmentHandler(Interceptor):
             total_amount_stock = 0
             amount_stocks = []
             for user_recomendation in user_recomendations:
-                perc_ideal_investment_type = \
-                    http_repository.get_object("perc_ideal_investment_type", ["investment_type_id"],
-                                               user_recomendation, headers)
-                perc_ideal = perc_ideal_investment_type['perc_ideal'] / 100 / 20
-                user_invest_config = \
-                    http_repository.get_object("user_invest_configs", ["investment_id"], user_recomendation, headers)
-                perc_ideal = perc_ideal * user_invest_config['coef']
-                stock_ = \
-                    http_repository.get_object("stocks", ["id"], {"id": user_recomendation['investment_id']}, headers)
-                user_stock = \
-                    http_repository.get_object("user_stocks", ["investment_id"], user_recomendation, headers)
-                if user_stock is not None:
-                    amount_atu = user_stock['quantity'] * stock_['price']
-                else:
-                    amount_atu = 0
-                amount = perc_ideal * resume['total_value_atu']
-                amount = amount - amount_atu
+                amount, stock_ = self.get_amount_value(user_recomendation, resume, headers)
                 if amount > stock_['price']:
                     total_amount_stock = total_amount_stock + amount
                     amount_stocks.append({'investment_id': user_recomendation['investment_id'], 'amount': amount,
@@ -1126,15 +1110,72 @@ class InvestmentHandler(Interceptor):
                 if amount > stock_['price']:
                     amount_stock['amount'] = amount_type['amount'] * (amount / total_amount_stock)
                     if amount_stock['amount'] > stock_['price']:
+                        num_quotas = int(amount_stock['amount'] / stock_['price'])
+                        amount_stock['amount'] = num_quotas * stock_['price']
+                        amount_stock['num_quotas'] = num_quotas
                         amount_ajsut = amount_ajsut + amount_stock['amount']
                         amount_stocks_ajust.append(amount_stock)
+            amount_stock_temp = 0
             if amount_ajsut > 0:
                 for ajsut in amount_stocks_ajust:
+                    stock_ = \
+                        http_repository.get_object("stocks", ["id"], {"id": ajsut['investment_id']}, headers)
                     ajsut['amount'] = amount_type['amount'] * (ajsut['amount'] / amount_ajsut)
+                    num_quotas = int(ajsut['amount'] / stock_['price'])
+                    ajsut['amount'] = num_quotas * stock_['price']
+                    ajsut['num_quotas'] = num_quotas
+                    amount_stock_temp = amount_stock_temp + ajsut['amount']
                     http_repository.insert("user_invest_apply_stock", ajsut, headers)
+            resto = amount_type['amount'] - amount_stock_temp
+            continuar = True
+            while continuar and resto > 0:
+                for user_recomendation in user_recomendations:
+                    resto_temp = resto
+                    if user_recomendation['rank'] <= 20:
+                        amount, stock_ = self.get_amount_value(user_recomendation, resume, headers)
+                        if resto > stock_['price'] and amount > 0:
+                            user_invest_apply_stock = \
+                                http_repository.get_object("user_invest_apply_stock", ["investment_id"],
+                                                           {"investment_id": user_recomendation['investment_id'],
+                                                            "user_invest_apply_id": user_invest_apply['id']}, headers)
+                            if user_invest_apply_stock is None:
+                                amount_stock = {'investment_id': user_recomendation['investment_id'],
+                                                'amount': stock_['price'],
+                                                'num_quotas': 1,
+                                                'user_invest_apply_id': user_invest_apply['id']}
+                                http_repository.insert("user_invest_apply_stock", amount_stock, headers)
+                            else:
+                                user_invest_apply_stock['amount'] = user_invest_apply_stock['amount'] + stock_['price']
+                                user_invest_apply_stock['num_quotas'] = user_invest_apply_stock['num_quotas'] + 1
+                                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
+                            resto = resto - stock_['price']
+                if resto_temp == resto:
+                    continuar = False
+                    print(resto)
+                    break
         return http_repository.get_objects("user_invest_apply_stock",
                                            ['user_invest_apply_id'], {'user_invest_apply_id': user_invest_apply['id']},
                                            headers)
+
+    def get_amount_value(self, user_recomendation, resume, headers):
+        perc_ideal_investment_type = \
+            http_repository.get_object("perc_ideal_investment_type", ["investment_type_id"],
+                                       user_recomendation, headers)
+        perc_ideal = perc_ideal_investment_type['perc_ideal'] / 100 / 20
+        user_invest_config = \
+            http_repository.get_object("user_invest_configs", ["investment_id"], user_recomendation, headers)
+        perc_ideal = perc_ideal * user_invest_config['coef']
+        stock_ = \
+            http_repository.get_object("stocks", ["id"], {"id": user_recomendation['investment_id']}, headers)
+        user_stock = \
+            http_repository.get_object("user_stocks", ["investment_id"], user_recomendation, headers)
+        if user_stock is not None:
+            amount_atu = user_stock['quantity'] * stock_['price']
+        else:
+            amount_atu = 0
+        amount = perc_ideal * resume['total_value_atu']
+        amount = amount - amount_atu
+        return amount, stock_
 
     def last_investment_calc(self, headers=None):
         user_ = http_repository.get_object("users", [], [], headers)
