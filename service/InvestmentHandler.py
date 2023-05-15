@@ -1135,7 +1135,8 @@ class InvestmentHandler(Interceptor):
                         amount, stock_ = self.get_amount_value(user_recomendation, resume, headers)
                         if resto > stock_['price'] and amount > 0:
                             user_invest_apply_stock = \
-                                http_repository.get_object("user_invest_apply_stock", ["investment_id"],
+                                http_repository.get_object("user_invest_apply_stock",
+                                                           ["investment_id", "user_invest_apply_id"],
                                                            {"investment_id": user_recomendation['investment_id'],
                                                             "user_invest_apply_id": user_invest_apply['id']}, headers)
                             if user_invest_apply_stock is None:
@@ -1147,7 +1148,8 @@ class InvestmentHandler(Interceptor):
                             else:
                                 user_invest_apply_stock['amount'] = user_invest_apply_stock['amount'] + stock_['price']
                                 user_invest_apply_stock['num_quotas'] = user_invest_apply_stock['num_quotas'] + 1
-                                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
+                                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
+                                                       headers)
                             resto = resto - stock_['price']
                 if resto_temp == resto:
                     continuar = False
