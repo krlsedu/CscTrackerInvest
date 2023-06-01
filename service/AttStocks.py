@@ -59,8 +59,6 @@ class AttStocks(Interceptor):
 
                 if full:
                     stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
-
-                    investment_handler.att_info_yahoo(stock_, headers)
                 else:
                     try:
                         stock_['price'] = acao['price']
@@ -71,7 +69,10 @@ class AttStocks(Interceptor):
                         stock_['dy'] = acao['dy']
                     except Exception as e:
                         pass
-                    investment_handler.att_price_yahoo(stock_, headers)
+
+                stock_ = investment_handler.att_dividend_info(stock_, headers)
+
+                investment_handler.att_price_yahoo(stock_, headers)
 
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
@@ -84,6 +85,8 @@ class AttStocks(Interceptor):
             try:
                 print(f"Atualizando cripto: {acao['ticker']}")
                 stock_ = investment_handler.get_stock(acao['ticker'], headers)
+
+                stock_ = investment_handler.att_dividend_info(stock_, headers)
 
                 investment_handler.att_price_yahoo_us(stock_, headers)
 
@@ -106,6 +109,8 @@ class AttStocks(Interceptor):
                 stock_ = investment_handler.get_stock(company_, headers)
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
 
+                stock_ = investment_handler.att_dividend_info(stock_, headers)
+
                 investment_handler.att_info_yahoo(stock_, headers)
 
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
@@ -120,6 +125,9 @@ class AttStocks(Interceptor):
                 company_ = bdr['ticker']
                 stock_ = investment_handler.get_stock(company_, headers)
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+
+                stock_ = investment_handler.att_dividend_info(stock_, headers)
+
                 investment_handler.att_price_yahoo(stock_, headers)
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
@@ -152,6 +160,8 @@ class AttStocks(Interceptor):
                         print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
                         pass
 
+                stock_ = investment_handler.att_dividend_info(stock_, headers)
+
                 investment_handler.att_price_yahoo(stock_, headers)
 
                 print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
@@ -164,6 +174,8 @@ class AttStocks(Interceptor):
         for fundo in fundos:
             try:
                 stock_, investment_type = http_repository.get_values_by_ticker(fundo, True, headers)
+
+                stock_ = investment_handler.att_dividend_info(stock_, headers)
 
                 http_repository.update("stocks", ["ticker"], stock_, headers)
 

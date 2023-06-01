@@ -270,19 +270,29 @@ class InvestmentHandler(Interceptor):
             pass
 
     def att_dividend_info(self, stock, headers):
-        select = f"select value_per_quote as value" \
+        select = f"select value_per_quote as value " \
                  f"from dividends_map m, " \
                  f"stocks st " \
                  f"where st.id = m.investment_id " \
-                 f"and st.ticker = {stock['ticker']} " \
+                 f"and st.ticker = '{stock['ticker']}' " \
                  f"and date_with >= now() + interval '-1 year' order by date_with desc"
         values = http_repository.execute_select(select, headers)
         if values.__len__() > 0:
-            f = stdev(values)
-            mean1 = mean(values)
+            vs = []
+            for value in values:
+                vs.append(float(value['value']))
+            if vs.__len__() < 12:
+                vs = vs + [0] * (12 - vs.__len__())
+            f = stdev(vs)
+            mean1 = mean(vs)
             stock["desv_dy"] = f / mean1
             stock["dy"] = mean1 / stock["price"] * 100
-            stock["last_dividend"] = values[0]
+            stock["last_dividend"] = float(values[0]['value'])
+            http_repository.update("stocks", ["ticker"], stock, headers)
+        else:
+            stock["dy"] = 0
+            stock["last_dividend"] = 0
+            stock["desv_dy"] = 0
             http_repository.update("stocks", ["ticker"], stock, headers)
         return stock
 
