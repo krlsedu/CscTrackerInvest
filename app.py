@@ -95,6 +95,19 @@ def investment_cal():
     return dumps, 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/save-aplly-stock', methods=['POST'])
+@cross_origin()
+def save_aplly_stock():
+    try:
+        headers = request.headers
+        dumps = json.dumps(investment_handler.save_aplly_stock(request.get_json(), headers))
+        return dumps, 200, {'Content-Type': 'application/json'}
+    except Exception as e:
+        msg = {'error': str(e)}
+        print(e)
+        return json.dumps(msg), 500, {'Content-Type': 'application/json'}
+
+
 @app.route('/last-investment-calc', methods=['GET'])
 @cross_origin()
 def last_investment_cal():
@@ -109,7 +122,7 @@ def add_movement():
     headers = request.headers
     args = request.args
     dumps = json.dumps(investment_handler.add_movement(request.get_json(), headers))
-    get_investments()
+    # get_investments()
     return dumps, 200, {'Content-Type': 'application/json'}
 
 

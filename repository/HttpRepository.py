@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from statistics import stdev, mean
 
 import requests
 from bs4 import BeautifulSoup
@@ -164,36 +163,6 @@ class HttpRepository(Interceptor):
         return soup
 
     def get_values(self, soup, stock):
-        values = []
-        find_all = soup.find_all("table")[0].find_all("tr")
-        last_dy = None
-        for tr in find_all:
-            td = tr.find_all("td")
-            try:
-                td__text = td[3].text
-                float1 = float(td__text.replace(".", "").replace(",", "."))
-                if last_dy is None:
-                    last_dy = float1
-                values.append(float1)
-            except IndexError:
-                pass
-            except ValueError:
-                try:
-                    td__text = td[3].find_all("div")[0].text
-                    __object = float(td__text.replace(".", "").replace(",", "."))
-                    if last_dy is None:
-                        last_dy = __object
-                    values.append(__object)
-                except:
-                    pass
-
-        try:
-            f = stdev(values)
-            mean1 = mean(values)
-            stock["desv_dy"] = f / mean1
-        except:
-            stock["desv_dy"] = 0
-
         try:
             stock["segment"] = self.find_value(soup, "Segmento", "text", 2, 0)
         except:
@@ -216,12 +185,6 @@ class HttpRepository(Interceptor):
         stock["price"] = float(price_text.replace(".", "").replace(",", "."))
 
         try:
-            dy_txt = self.find_value(soup, "Dividend Yield com base nos últimos 12 meses", "title", 1, 0)
-            stock["dy"] = float(dy_txt.replace(".", "").replace(",", "."))
-        except Exception as e:
-            stock["dy"] = 0
-
-        try:
             txt = self.find_value(soup, "P/L", "text", 3, 0)
             stock["pl"] = float(txt.replace(".", "").replace(",", "."))
         except Exception as e:
@@ -239,16 +202,7 @@ class HttpRepository(Interceptor):
         except Exception as e:
             stock["avg_liquidity"] = 0
 
-        try:
-            txt = self.find_value(soup, "Último rendimento", "text", 3, 0)
-            stock["last_dividend"] = float(txt.replace(".", "").replace(",", "."))
-        except Exception as e:
-            if last_dy is not None:
-                stock["last_dividend"] = last_dy
-            else:
-                stock["last_dividend"] = 0
-            pass
-        #
+
         # try:
         #     txt = self.find_value(soup, "earning-section", "id", 0, 0, "input", "value")
         #     txt = json.loads(txt)
