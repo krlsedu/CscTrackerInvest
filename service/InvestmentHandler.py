@@ -285,14 +285,15 @@ class InvestmentHandler(Interceptor):
                 vs = vs + [0] * (12 - vs.__len__())
             f = stdev(vs)
             mean1 = mean(vs)
-            stock["desv_dy"] = f / mean1
-            stock["dy"] = mean1 / stock["price"] * 100
+            mean_ = f / mean1
+            stock["desv_dy"] = mean_
+            stock["dy"] = (mean1 * 12) / stock["price"] * 100
             stock["last_dividend"] = float(values[0]['value'])
             http_repository.update("stocks", ["ticker"], stock, headers)
         else:
             stock["dy"] = 0
             stock["last_dividend"] = 0
-            stock["desv_dy"] = 0
+            stock["desv_dy"] = 10000000
             http_repository.update("stocks", ["ticker"], stock, headers)
         return stock
 
@@ -1010,7 +1011,6 @@ class InvestmentHandler(Interceptor):
         df['rank_dy'] = df['dy'].rank(ascending=False)
         df['rank_pvp'] = df['pvp'].rank(ascending=True)
         df['rank_desv_dy'] = df['desv_dy'].rank(ascending=True)
-        df['rank_pl'] = df['pl'].rank(ascending=True)
         df['rank_pl'] = df['pl'].rank(ascending=True)
         df['rank_ev_ebit'] = df['ev_ebit'].rank(ascending=True)
         df['rank_ev_ebitda'] = df['ev_ebitda'].rank(ascending=True)
