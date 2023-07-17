@@ -83,6 +83,7 @@ def get_founds():
 @cross_origin()
 def investment_fact():
     headers = request.headers
+
     dumps = json.dumps(investment_handler.investment_fact(request.get_json(), headers))
     return dumps, 200, {'Content-Type': 'application/json'}
 
