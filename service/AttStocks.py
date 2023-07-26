@@ -52,9 +52,11 @@ class AttStocks(Interceptor):
 
     def att_acoes(self, headers=None, full=False):
         acoes = load_acoes_info()
+        count_ = 0
         for acao in acoes:
+            count_ += 1
             try:
-                print(f"Atualizando a acao: {acao['ticker']}")
+                print(f"Atualizando a acao: {acao['ticker']} - {count_}/{len(acoes)}")
                 stock_ = investment_handler.get_stock(acao['ticker'], headers)
 
                 if full:
@@ -101,11 +103,13 @@ class AttStocks(Interceptor):
 
     def att_bdr(self, headers=None):
         bdrs = load_bdr_info()
+        count_ = 0
         for bdr in bdrs:
+            count_ += 1
             try:
                 company_ = bdr['url']
                 company_ = company_.replace('/bdrs/', '')
-                print(f"Atualizando BDR: {company_}")
+                print(f"Atualizando BDR: {company_} - {count_}/{len(bdrs)}")
                 stock_ = investment_handler.get_stock(company_, headers)
                 stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
 
@@ -142,9 +146,11 @@ class AttStocks(Interceptor):
         return bdrs
 
     def att_fiis(self, headers, full=False):
-        fiis = load_fiis_info()
+        fiis = load_fiis_info(headers)
+        count_ = 0
         for fii in fiis:
-            print(f"Atualizando o fundo: {fii['ticker']}")
+            count_ += 1
+            print(f"Atualizando o fundo: {fii['ticker']} - {count_}/{len(fiis)}")
             try:
                 stock_ = investment_handler.get_stock(fii['ticker'], headers)
                 if full:
@@ -188,7 +194,7 @@ class AttStocks(Interceptor):
         if not daily:
             fundos = http_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15}, headers)
             self.att_prices_generic(headers, fundos, 'fundo', daily)
-        fiis = load_fiis_info()
+        fiis = load_fiis_info(headers)
         self.att_prices_generic(headers, fiis, 'fii', daily)
         acoes = load_acoes_info()
         self.att_prices_generic(headers, acoes, 'acao', daily)

@@ -206,6 +206,7 @@ class InvestmentHandler(Interceptor):
             except:
                 pass
             pass
+        return stock_
 
     def att_price_yahoo_us(self, stock_, headers, date=None):
         try:
@@ -285,9 +286,16 @@ class InvestmentHandler(Interceptor):
                 vs = vs + [0] * (12 - vs.__len__())
             f = stdev(vs)
             mean1 = mean(vs)
-            mean_ = f / mean1
-            stock["desv_dy"] = mean_
-            stock["dy"] = (mean1 * 12) / stock["price"] * 100
+            if mean1 == 0:
+                stock["desv_dy"] = 10000000
+            else:
+                mean_ = f / mean1
+                stock["desv_dy"] = mean_
+            price_ = stock["price"]
+            if price_ > 0:
+                stock["dy"] = (mean1 * 12) / price_ * 100
+            else:
+                stock["dy"] = 0
             stock["last_dividend"] = float(values[0]['value'])
             http_repository.update("stocks", ["ticker"], stock, headers)
         else:

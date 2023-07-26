@@ -17,7 +17,7 @@ class FiiHandler(Interceptor):
         super().__init__()
 
     def get_fiis(self, headers, args=None):
-        load_fiis = load_fiis_info()
+        load_fiis = load_fiis_info(headers)
         values_fiis = {}
         for fii in load_fiis:
             values_fiis[fii['ticker']] = fii['price']
