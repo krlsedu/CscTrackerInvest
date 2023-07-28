@@ -76,7 +76,10 @@ class InvestmentHandler(Interceptor):
                     total_value += movement['quantity'] * movement['price'] * float(coef)
                     quantity = float(user_stock['quantity']) + float(movement['quantity']) * float(coef)
                     if quantity != 0:
-                        avg_price = total_value / float(quantity)
+                        if movement['movement_type'] == 2:
+                            avg_price = user_stock['avg_price']
+                        else:
+                            avg_price = total_value / float(quantity)
                     else:
                         avg_price = 0
                     user_stock['quantity'] = quantity
