@@ -57,6 +57,16 @@ pipeline {
                 }
             }
         }
+
+        stage('Service update'){
+            agent any
+            when {
+                expression { env.RELEASE_COMMIT != '0' }
+            }
+            steps{
+                sh 'docker service update --image krlsedu/csctracker-invest:' + env.VERSION_NAME + ' csctracker_services_invest'
+            }
+        }
     }
 }
 
