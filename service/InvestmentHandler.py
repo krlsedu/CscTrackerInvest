@@ -329,7 +329,8 @@ class InvestmentHandler(Interceptor):
                     if investment_type['id'] == 100:
                         self.att_price_yahoo_us(stock_, headers)
                     else:
-                        self.att_price_yahoo(stock_, headers)
+                        if investment_type['id'] != 16:
+                            self.att_price_yahoo(stock_, headers)
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \
@@ -399,6 +400,8 @@ class InvestmentHandler(Interceptor):
                                 .replace(tzinfo=timezone.utc).strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
+                            stock_consolidated['variation_perc'] = stock_consolidated['total_value_atu'] / \
+                                                              stock_consolidated['total_value_ant'] - 1
                     else:
                         stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
                                                                 float(stock_consolidated['price_atu'])
@@ -409,6 +412,8 @@ class InvestmentHandler(Interceptor):
                                 .replace(tzinfo=timezone.utc).strftime('%Y-%m-%d')
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
+                            stock_consolidated['variation_perc'] = stock_consolidated['total_value_atu'] / \
+                                                              stock_consolidated['total_value_ant'] - 1
                     stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
                         stock_consolidated['total_value_invest']) - 1
                     infos_ = stock_['url_infos']
@@ -668,6 +673,7 @@ class InvestmentHandler(Interceptor):
         infos['resume']['monthly_gain'] = (infos['resume']['daily_total_gain'] + float(1)) ** float(30) - float(1)
 
         infos['resume']['total_gain'] = infos['resume']['dyr'] + infos['resume']['gain']
+        infos['resume']['avg_days'] = avg_days
         return infos
 
     def add_daily_gain(self, stock, headers=None):
@@ -701,6 +707,7 @@ class InvestmentHandler(Interceptor):
 
         stock['daily_gain'] = stock['gain'] / float(avg_days)
         stock['daily_dyr'] = stock['dyr'] / float(avg_days)
+        stock['avg_days'] = avg_days
         stock['daily_total_gain'] = stock['daily_dyr'] + stock['daily_gain']
         stock['monthly_gain'] = (stock['daily_total_gain'] + float(1)) ** float(30) - float(1)
 
