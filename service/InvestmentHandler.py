@@ -60,6 +60,7 @@ class InvestmentHandler(Interceptor):
                 movement['ticker'] = stock['ticker']
                 price = fixed_income_handler.get_stock_price(movement, headers)
                 movement['price'] = float(price['price'])
+                movement['date'] = movement['buy_date']
                 movement['quantity'] = float(movement['quantity']) / movement['price']
             try:
                 del movement['fixed_icome']
