@@ -221,7 +221,9 @@ class AttStocks(Interceptor):
             # generate log of progress of stock processing with overal progress
             print(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
                   f"{counter}/{len(my_stocks)}")
-            self.dividends_map_info(headers, stock_)
+
+            if stock['quantity'] > 0:
+                self.dividends_map_info(headers, stock_)
 
         self.dividends_info(headers)
 

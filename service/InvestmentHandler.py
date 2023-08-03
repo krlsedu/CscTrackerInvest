@@ -57,6 +57,7 @@ class InvestmentHandler(Interceptor):
                 stock = self.get_stock(ticker_, headers)
             else:
                 stock = fixed_income_handler.get_stock(movement, headers)
+                movement['ticker'] = stock['ticker']
                 price = fixed_income_handler.get_stock_price(movement, headers)
                 movement['price'] = float(price['price'])
                 movement['quantity'] = float(movement['quantity']) / movement['price']
@@ -75,13 +76,14 @@ class InvestmentHandler(Interceptor):
 
                     total_value += movement['quantity'] * movement['price'] * float(coef)
                     quantity = float(user_stock['quantity']) + float(movement['quantity']) * float(coef)
-                    if quantity != 0:
+                    if quantity > 0:
                         if movement['movement_type'] == 2:
                             avg_price = user_stock['avg_price']
                         else:
                             avg_price = total_value / float(quantity)
                     else:
-                        avg_price = 0
+                        quantity = 0
+                        avg_price = user_stock['avg_price']
                     user_stock['quantity'] = quantity
                     profit_loss_value = float(movement['price']) - float(user_stock['avg_price'])
                     user_stock['avg_price'] = avg_price
@@ -654,9 +656,14 @@ class InvestmentHandler(Interceptor):
         infos['resume']['daily_dyr'] = infos['resume']['dyr'] / float(avg_days)
         profits_r = (infos['resume']['profits'] - infos['resume']['losses']) / infos['resume']['total_value_atu']
         infos['resume']['daily_flr'] = profits_r / float(avg_days)
-        infos['resume']['daily_total_gain'] = infos['resume']['daily_dyr'] + \
-                                              infos['resume']['daily_gain'] + \
-                                              infos['resume']['daily_flr']
+
+        total_gain_real = ((infos['resume']['total_value_atu'] - infos['resume']['total_value_invest']) +
+                           (infos['resume']['profits'] - infos['resume']['losses']) +
+                           infos['resume']['total_dividends'])
+        real_gain = total_gain_real / infos['resume']['total_value_atu']
+        real_gain = real_gain / float(avg_days)
+
+        infos['resume']['daily_total_gain'] = real_gain
         infos['resume']['monthly_gain'] = (infos['resume']['daily_total_gain'] + float(1)) ** float(30) - float(1)
 
         infos['resume']['total_gain'] = infos['resume']['dyr'] + infos['resume']['gain']
@@ -1082,9 +1089,9 @@ class InvestmentHandler(Interceptor):
             stock_ = http_repository.get_object("stocks", ["ticker"], [fact['ticker']])
             fact['investment_id'] = stock_['id']
             del fact['ticker']
-            http_repository.insert("hist_user_invest_facts", fact, headers)
+            http_repository.insert("user_invest_facts", fact, headers)
         else:
-            http_repository.update("hist_user_invest_facts", ["id"], fact, headers)
+            http_repository.update("user_invest_facts", ["id"], fact, headers)
 
         user_invest_configs = http_repository.get_object("user_invest_configs", ["investment_id"],
                                                          [fact['investment_id']])

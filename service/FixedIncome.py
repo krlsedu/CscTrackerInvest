@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 import pandas
@@ -34,14 +33,15 @@ class FixedIncome(Interceptor):
 
     def add_stock(self, movement, headers=None):
         type_ = 16
-        code_ = movement['ticker'].upper().strip()
         try:
             tx_type_ = movement['tx_type']
         except:
             tx_type_ = "CDI"
+        code_ = (movement['ticker'].upper().strip() + " - " + str(movement['price']) + " " + tx_type_ + " - " +
+                 movement['buy_date'])
         investment_tp = {
             'ticker': code_,
-            'name': movement['ticker'],
+            'name': code_,
             'investment_type_id': type_,
             'tx_type': tx_type_,
             'tx_quotient': movement['price'],
@@ -80,6 +80,8 @@ class FixedIncome(Interceptor):
                 if date.strftime('%Y-%m-%d') > date_price:
                     tx_val = self.get_tax_price(stock_['tx_type'], date, headers)
                     lt = float(tx_val['value'] / 100)
+                    tx_quotient = float(stock_['tx_quotient'] / 100)
+                    lt = lt * tx_quotient
                     lq = ((1 + lt) ** (1 / 365))
                     price = price * lq
                     stock_['price'] = float(price)
