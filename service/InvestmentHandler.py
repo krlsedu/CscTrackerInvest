@@ -401,7 +401,7 @@ class InvestmentHandler(Interceptor):
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
                             stock_consolidated['variation_perc'] = stock_consolidated['total_value_atu'] / \
-                                                              stock_consolidated['total_value_ant'] - 1
+                                                                   stock_consolidated['total_value_ant'] - 1
                     else:
                         stock_consolidated['total_value_atu'] = float(stock['quantity']) * \
                                                                 float(stock_consolidated['price_atu'])
@@ -413,7 +413,7 @@ class InvestmentHandler(Interceptor):
                             stock_consolidated['variation'] = stock_consolidated['total_value_atu'] - \
                                                               stock_consolidated['total_value_ant']
                             stock_consolidated['variation_perc'] = stock_consolidated['total_value_atu'] / \
-                                                              stock_consolidated['total_value_ant'] - 1
+                                                                   stock_consolidated['total_value_ant'] - 1
                     stock_consolidated['gain'] = float(stock_consolidated['total_value_atu']) / float(
                         stock_consolidated['total_value_invest']) - 1
                     infos_ = stock_['url_infos']
@@ -1092,33 +1092,67 @@ class InvestmentHandler(Interceptor):
             http_repository.update("stocks", ["ticker"], stock_, headers)
         print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
 
-    def investment_fact(self, fact, headers=None):
-        if fact['id'] is None:
-            stock_ = http_repository.get_object("stocks", ["ticker"], [fact['ticker']])
+    def investment_facts(self, facts, headers=None):
+        user_invest_configs = {}
+        for fact in facts:
+            fact_ = None
+            try:
+                fact['id']
+                fact_ = http_repository.get_object("user_invest_facts", ["id"], fact, headers)
+            except KeyError:
+                fact['id'] = None
+
+            filter = {
+                "ticker": fact['ticker'],
+            }
+            stock_ = http_repository.get_object("stocks", ["ticker"], filter, headers)
             fact['investment_id'] = stock_['id']
             del fact['ticker']
-            http_repository.insert("user_invest_facts", fact, headers)
-        else:
-            http_repository.update("user_invest_facts", ["id"], fact, headers)
-
-        user_invest_configs = http_repository.get_object("user_invest_configs", ["investment_id"],
-                                                         [fact['investment_id']])
-        if user_invest_configs is None:
-            user_invest_configs = {
+            if fact['id'] is None:
+                http_repository.insert("user_invest_facts", fact, headers)
+            else:
+                http_repository.update("user_invest_facts", ["id"], fact, headers)
+            filter = {
                 "investment_id": fact['investment_id'],
-                "coef": 1
             }
-            http_repository.insert("user_invest_configs", user_invest_configs, headers)
+            user_invest_configs = http_repository.get_object("user_invest_configs", ["investment_id"],
+                                                             filter, headers)
+            if user_invest_configs is None:
+                user_invest_configs = {
+                    "investment_id": fact['investment_id'],
+                    "coef": 1
+                }
+                http_repository.insert("user_invest_configs", user_invest_configs, headers)
 
-        weight = fact['weight']
-        if weight is None:
-            weight = 10
-        if fact['yes_no'] == 'no':
-            weight = weight * -1
-        fact['weight'] = weight
-        user_invest_configs['coef'] = user_invest_configs['coef'] + (weight / 100)
-        http_repository.update("user_invest_configs", ["investment_id"], user_invest_configs, headers)
+            weight = fact['weight']
+            if weight is None:
+                weight = 10
+            if fact_ is not None:
+                weight = fact_['weight']
+                if fact['yes_no'] != fact_['yes_no']:
+                    weight = weight + fact['weight']
+                else:
+                    weight = fact['weight'] - fact_['weight']
+            if fact['yes_no'] == 'no':
+                weight = weight * -1
+            fact['weight'] = weight
+            user_invest_configs['coef'] = user_invest_configs['coef'] + (weight / 100)
+            http_repository.update("user_invest_configs", ["investment_id"], user_invest_configs, headers)
         return user_invest_configs
+
+    def get_investment_facts(self, ticker, headers=None):
+        filter = {
+            "ticker": ticker,
+        }
+        stock_ = http_repository.get_object("stocks", ["ticker"], filter, headers)
+        filter = {
+            "investment_id": stock_['id'],
+        }
+        facts = http_repository.get_objects("user_invest_facts", ["investment_id"], filter, headers)
+        for fact in facts:
+            del fact['investment_id']
+            fact['ticker'] = ticker
+        return facts
 
     def investment_calc(self, data, headers=None):
         user_invest_apply = {'amount': data['amount']}

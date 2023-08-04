@@ -79,12 +79,19 @@ def get_founds():
     return json.dumps(stocks, cls=Encoder), 200, {'Content-Type': 'application/json'}
 
 
-@app.route('/investment-fact', methods=['POST'])
+@app.route('/investment-facts', methods=['POST'])
 @cross_origin()
 def investment_fact():
     headers = request.headers
+    dumps = json.dumps(investment_handler.investment_facts(request.get_json(), headers))
+    return dumps, 200, {'Content-Type': 'application/json'}
 
-    dumps = json.dumps(investment_handler.investment_fact(request.get_json(), headers))
+
+@app.route('/investment-facts', methods=['GET'])
+@cross_origin()
+def get_investment_facts():
+    headers = request.headers
+    dumps = json.dumps(investment_handler.get_investment_facts(request.args['ticker'], headers))
     return dumps, 200, {'Content-Type': 'application/json'}
 
 
