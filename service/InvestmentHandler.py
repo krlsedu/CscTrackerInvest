@@ -875,6 +875,7 @@ class InvestmentHandler(Interceptor):
         type_weight = stock_['type_weight']
         type_value_ideal = self.get_ideal_value(types_sum[0], type_weight, perc_type_ideal)
         max_rank_to_buy = 20
+        stock_['ticker_weight_ideal'] = self.get_ticker_weight_ideal(stock_['ticker'], headers)
         if stock_ref is not None:
             try:
                 if stock_[perc_refer] is None:
@@ -961,6 +962,42 @@ class InvestmentHandler(Interceptor):
             else:
                 stock_['buy_sell_indicator'] = "sell"
                 stock_['recommendation'] = "Sell all - strategy"
+
+    def get_ticker_weight_ideal(self, ticker, headers=None):
+        try:
+            select = f"select  us.ticker as ticker, \
+                               piit.perc_ideal as perc_ideal_type, \
+                               uic.coef as coef, \
+                               uic.coef / (select sum(uic_2.coef) \
+                                           from user_invest_configs uic_2 \
+                                           where uic_2.user_id = uic.user_id \
+                                             and uic_2.investment_id in (select investment_id  \
+                                                                         from user_stocks us_2  \
+                                                                         where us_2.user_id = uic.user_id  \
+                                                                           and us_2.quantity > 0  \
+                                                                           and us_2.investment_type_id = us.investment_type_id  \
+                                                                         union  \
+                                                                         select investment_id  \
+                                                                         from user_recomendations ur  \
+                                                                         where ur.user_id = uic.user_id  \
+                                                                           and ur.investment_type_id = us.investment_type_id  \
+                                                                           and rank <= 20)) * piit.perc_ideal as perc_ideal \
+                        from user_invest_configs uic,  \
+                             stocks us,  \
+                             perc_ideal_investment_type piit  \
+                        where uic.user_id = piit.user_id  \
+                          and uic.investment_id = us.id  \
+                          and us.investment_type_id = piit.investment_type_id  \
+                          and uic.user_id = 1  \
+                          and us.ticker = '{ticker}'"
+            info = http_repository.execute_select(select, headers);
+            if len(info) > 0:
+                return info[0]['perc_ideal'] / 100
+            else:
+                return 0
+        except Exception as e:
+            print(e)
+            return 0
 
     def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br, founds, fix_income, criptos):
         if stock['investment_type_id'] == 1:
