@@ -88,16 +88,34 @@ class InvestmentHandler(Interceptor):
                     user_stock['quantity'] = quantity
                     profit_loss_value = float(movement['price']) - float(user_stock['avg_price'])
                     user_stock['avg_price'] = avg_price
+                    try:
+                        user_stock['venc_date'] = movement['venc_date']
+                        del movement['venc_date']
+                    except:
+                        pass
                     if movement['movement_type'] == 2:
                         self.add_profit_loss(profit_loss_value, movement, headers)
                     http_repository.update("user_stocks", ["user_id", "investment_id"], user_stock, headers)
+                try:
+                    del movement['tx_type']
+                except:
+                    pass
                 http_repository.insert("user_stocks_movements", movement, headers)
             else:
                 if movement_type['to_balance']:
                     stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
                              'avg_price': movement['price'], 'user_id': movement['user_id'],
                              'investment_type_id': movement['investment_type_id']}
+                    try:
+                        stock['venc_date'] = movement['venc_date']
+                        del movement['venc_date']
+                    except:
+                        pass
                     http_repository.insert("user_stocks", stock, headers)
+                try:
+                    del movement['tx_type']
+                except:
+                    pass
                 http_repository.insert("user_stocks_movements", movement, headers)
             return {"status": "success", "message": "Movement added"}
         except Exception as e:

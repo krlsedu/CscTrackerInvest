@@ -39,6 +39,10 @@ class FixedIncome(Interceptor):
             tx_type_ = "CDI"
         code_ = (movement['ticker'].upper().strip() + " - " + str(movement['price']) + " " + tx_type_ + " - " +
                  movement['buy_date'])
+        try:
+            code_ = code_ + " - " + movement['venc_date']
+        except:
+            pass
         investment_tp = {
             'ticker': code_,
             'name': code_,
@@ -78,10 +82,14 @@ class FixedIncome(Interceptor):
             date_range = pandas.date_range(date_price, date_movement)
             for date in date_range:
                 if date.strftime('%Y-%m-%d') > date_price:
-                    tx_val = self.get_tax_price(stock_['tx_type'], date, headers)
-                    lt = float(tx_val['value'] / 100)
+                    type_ = stock_['tx_type']
                     tx_quotient = float(stock_['tx_quotient'] / 100)
-                    lt = lt * tx_quotient
+                    if type_ == "PRÉ":
+                        lt = tx_quotient
+                    else:
+                        tx_val = self.get_tax_price(type_, date, headers)
+                        lt = float(tx_val['value'] / 100)
+                        lt = lt * tx_quotient
                     lq = ((1 + lt) ** (1 / 365))
                     price = price * lq
                     stock_['price'] = float(price)
