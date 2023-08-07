@@ -221,8 +221,9 @@ class AttStocks(Interceptor):
             # generate log of progress of stock processing with overal progress
             print(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
                   f"{counter}/{len(my_stocks)}")
-
-            if stock['quantity'] > 0:
+            if (stock_['investment_type_id'] == 1
+                    or stock_['investment_type_id'] == 2
+                    or stock_['investment_type_id'] == 4):
                 self.dividends_map_info(headers, stock_)
 
         self.dividends_info(headers)
@@ -275,11 +276,15 @@ class AttStocks(Interceptor):
             url = None
             status_invest = True
             if stock_['investment_type_id'] == 1:
-                url = f"https://statusinvest.com.br/acoes/{stock_['ticker']}"
+                # url = f"https://statusinvest.com.br/acoes/{stock_['ticker']}"
+                url = f"https://investidor10.com.br/acoes/{stock_['ticker']}"
+                status_invest = False
             elif stock_['investment_type_id'] == 4:
                 url = f"https://statusinvest.com.br/bdrs/{stock_['ticker']}"
             elif stock_['investment_type_id'] == 2:
-                url = f"https://statusinvest.com.br/fundos-imobiliarios/{stock_['ticker']}"
+                # url = f"https://statusinvest.com.br/fundos-imobiliarios/{stock_['ticker']}"
+                url = f"https://investidor10.com.br/fiis/{stock_['ticker']}"
+                status_invest = False
             try:
                 soup = http_repository.get_soup(url, headers)
                 table = None
@@ -316,7 +321,8 @@ class AttStocks(Interceptor):
                             value = self.convert_pt_br_number_to_db_number(value)
                             finded = True
                     if finded:
-                        if _type == 'Rendimento' or _type == 'REND. TRIBUTADO':
+                        if _type == 'Rendimento' or _type == 'REND. TRIBUTADO' or (
+                                _type == 'Dividendos' and stock_['investment_type_id'] == 2):
                             _type = 3
                         elif _type == 'Juros sobre Capital Próprio' or _type == 'JSCP':
                             _type = 2

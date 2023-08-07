@@ -1310,13 +1310,7 @@ class InvestmentHandler(Interceptor):
                                            headers)
 
     def get_amount_value(self, user_recomendation, resume, headers):
-        perc_ideal_investment_type = \
-            http_repository.get_object("perc_ideal_investment_type", ["investment_type_id"],
-                                       user_recomendation, headers)
-        perc_ideal = perc_ideal_investment_type['perc_ideal'] / 100 / 20
-        user_invest_config = \
-            http_repository.get_object("user_invest_configs", ["investment_id"], user_recomendation, headers)
-        perc_ideal = perc_ideal * user_invest_config['coef']
+        perc_ideal = float(user_recomendation['ticker_weight_ideal'])
         stock_ = \
             http_repository.get_object("stocks", ["id"], {"id": user_recomendation['investment_id']}, headers)
         user_stock = \
