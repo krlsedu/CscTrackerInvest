@@ -676,16 +676,16 @@ class InvestmentHandler(Interceptor):
         if avg_days is None or avg_days < 1:
             avg_days = 1
         infos['resume']['gain'] = infos['resume']['total_value_atu'] / infos['resume']['total_value_invest'] - 1
-        infos['resume']['daily_gain'] = infos['resume']['gain'] / float(avg_days)
-        infos['resume']['daily_dyr'] = infos['resume']['dyr'] / float(avg_days)
+        infos['resume']['daily_gain'] = self.root_n(infos['resume']['gain'] + 1, avg_days) - 1
+        infos['resume']['daily_dyr'] = self.root_n(infos['resume']['dyr'] + 1, avg_days) - 1
         profits_r = (infos['resume']['profits'] - infos['resume']['losses']) / infos['resume']['total_value_atu']
-        infos['resume']['daily_flr'] = profits_r / float(avg_days)
+        infos['resume']['daily_flr'] = self.root_n(profits_r + 1, avg_days) - 1
 
         total_gain_real = ((infos['resume']['total_value_atu'] - infos['resume']['total_value_invest']) +
                            (infos['resume']['profits'] - infos['resume']['losses']) +
                            infos['resume']['total_dividends'])
         real_gain = total_gain_real / infos['resume']['total_value_atu']
-        real_gain = real_gain / float(avg_days)
+        real_gain = self.root_n(real_gain + 1, avg_days) - 1
 
         infos['resume']['daily_total_gain'] = real_gain
         infos['resume']['monthly_gain'] = (infos['resume']['daily_total_gain'] + float(1)) ** float(30) - float(1)
@@ -693,6 +693,9 @@ class InvestmentHandler(Interceptor):
         infos['resume']['total_gain'] = infos['resume']['dyr'] + infos['resume']['gain']
         infos['resume']['avg_days'] = avg_days
         return infos
+
+    def root_n(self, x, n):
+        return x ** (1 / float(n))
 
     def add_daily_gain(self, stock, headers=None):
         stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
@@ -723,8 +726,8 @@ class InvestmentHandler(Interceptor):
         if avg_days is None or avg_days < 1:
             avg_days = 1
 
-        stock['daily_gain'] = stock['gain'] / float(avg_days)
-        stock['daily_dyr'] = stock['dyr'] / float(avg_days)
+        stock['daily_gain'] = self.root_n(stock['gain'] + 1, avg_days) - 1
+        stock['daily_dyr'] = self.root_n(stock['dyr'] + 1, avg_days) - 1
         stock['avg_days'] = avg_days
         stock['daily_total_gain'] = stock['daily_dyr'] + stock['daily_gain']
         stock['monthly_gain'] = (stock['daily_total_gain'] + float(1)) ** float(30) - float(1)
