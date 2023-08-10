@@ -1,13 +1,16 @@
 import decimal
 import json
+from datetime import datetime
 
 from repository.HttpRepository import HttpRepository
+from service.FixedIncome import FixedIncome
 from service.Interceptor import Interceptor
 from service.InvestmentHandler import InvestmentHandler
-from service.LoadInfo import load_fiis_info, load_acoes_info, load_bdr_info
+from service.LoadInfo import load_fiis_info, load_acoes_info, load_bdr_info, load_indices
 
 investment_handler = InvestmentHandler()
 http_repository = HttpRepository()
+fixed_income_handler = FixedIncome()
 
 
 class Encoder(json.JSONEncoder):
@@ -21,6 +24,8 @@ class AttStocks(Interceptor):
         super().__init__()
 
     def att_expres(self, headers=None):
+        print("Atualizando indices")
+        self.att_indices(headers)
         print("Atualizando fiis")
         self.att_fiis(headers)
         print("Atualizando acoes")
@@ -397,3 +402,25 @@ class AttStocks(Interceptor):
         elif stock['investment_type'] == 4:
             self.att_price_generic(headers, stock, 'bdr')
         return stock
+
+    def att_indices(self, headers):
+        fiis = load_indices(headers)
+        count_ = 0
+        for fii in fiis:
+            count_ += 1
+            print(f"Atualizando o índice: {fii['ticker']} - {count_}/{len(fiis)}")
+            try:
+                stock_ = investment_handler.get_stock(fii['ticker'], headers)
+                if stock_['tx_type'] is None:
+                    investment_handler.att_price_yahoo(stock_, headers)
+                else:
+                    movement = {
+                        "buy_date": datetime.now().strftime('%Y-%m-%d'),
+                        "ticker": stock_['ticker']
+                    }
+                    fixed_income_handler.get_stock_price(movement, headers)
+
+                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+            except Exception as e:
+                print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
+        return fiis

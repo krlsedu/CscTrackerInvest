@@ -50,3 +50,17 @@ def load_bdr_info():
 
     response = requests.request("GET", url, headers=headers)
     return response.json()
+
+def load_indices(headers=None):
+    keys = ['ticker', 'price']
+    ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
+    select_ = f"select " \
+              f"    {ks} " \
+              f"from " \
+              f"    stocks " \
+              f"where " \
+              f"    investment_type_id = 1001  " \
+              f"order by " \
+              f"    ticker"
+    fiis = http_repository.execute_select(select_, headers)
+    return fiis
