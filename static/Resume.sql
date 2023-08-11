@@ -146,6 +146,6 @@ from (select name,
                        investment_types it
                   where it.id = s.investment_type_id
                     and it.id = 1001
-                    and (it.name = :indice or 'all' = :indice)) as t
+                    and (s.name = :indice or 'all' = :indice)) as t
             group by name) as t2) as t3
 order by ganho_anualizado_medio desc;
