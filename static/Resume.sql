@@ -121,6 +121,7 @@ from (select name,
                     and it.id = s.investment_type_id
                     and (it.name = :invest_name or 'all' = :invest_name)
                     and (s.ticker = :ticker or 'all' = :ticker)
+                    and us.user_id = :user_id
                   union
                   select 1                      as quantity_ini,
                          coalesce((select sp_ini.price

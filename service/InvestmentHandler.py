@@ -1198,6 +1198,10 @@ class InvestmentHandler(Interceptor):
             http_repository.update("user_invest_configs", ["investment_id"], user_invest_configs, headers)
         return user_invest_configs
 
+    def get_investment_facts_labels(self, headers=None):
+        select = utils.read_file("static/FactsLabels.sql")
+        return http_repository.execute_select(select, headers)
+
     def get_investment_facts(self, ticker, headers=None):
         filter = {
             "ticker": ticker,

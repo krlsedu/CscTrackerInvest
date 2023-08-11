@@ -95,6 +95,14 @@ def get_investment_facts():
     return dumps, 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/investment-facts-labels', methods=['GET'])
+@cross_origin()
+def get_investment_facts_labels():
+    headers = request.headers
+    dumps = json.dumps(investment_handler.get_investment_facts_labels(headers))
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
 @app.route('/resume-invest', methods=['GET'])
 @cross_origin()
 def get_resume_invest():
