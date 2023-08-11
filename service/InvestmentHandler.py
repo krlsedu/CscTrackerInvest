@@ -1433,3 +1433,49 @@ class InvestmentHandler(Interceptor):
             return apply_stock
 
         raise Exception("Não foi possível salvar a venda")
+
+    def get_resume_invest(self, args, headers):
+        select = utils.read_file("static/Resume.sql")
+        args_ = {}
+        for key in args:
+            args_[key] = args[key]
+        # check if exist arg ticker case not exist add text all
+        if 'ticker' not in args_:
+            args_['ticker'] = 'all'
+
+        if 'tipo' not in args_:
+            args_['tipo'] = 'all'
+
+        if 'indice' not in args_:
+            args_['indice'] = 'all'
+
+        if 'invest_name' not in args_:
+            args_['invest_name'] = 'all'
+
+        # if data_inicio not in args_ add data fim as yyyy-MM-dd
+        if 'data_fim' not in args_:
+            args_['data_fim'] = datetime.now().strftime("%Y-%m-%d")
+
+        # if data_ini not in args_ add data ini as 2022-01-01
+        if 'data_ini' not in args_:
+            args_['data_ini'] = '2022-01-01'
+
+        for key in args_:
+            select = select.replace(":" + key, "'" + args_[key] + "'")
+        return http_repository.execute_select(select, headers)
+
+    def load_prices(self, ticker, type, name=None, headers=None, data_=None):
+        if name is None:
+            name = ticker
+        stock_ = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker}, headers)
+        infos = http_repository.get_prices(name, type, False, "4")
+        for info in infos:
+            prices = info['prices']
+            for price in prices:
+                stock_['price'] = price['price']
+                data = datetime.strptime(price['date'], '%d/%m/%y %H:%M').strftime("%Y-%m-%d")
+                can_insert = True
+                if data_ is not None:
+                    can_insert = data > data_
+                if can_insert:
+                    self.add_stock_price(stock_, headers, data)

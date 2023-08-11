@@ -95,6 +95,15 @@ def get_investment_facts():
     return dumps, 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/resume-invest', methods=['GET'])
+@cross_origin()
+def get_resume_invest():
+    headers = request.headers
+    args = request.args
+    dumps = json.dumps(investment_handler.get_resume_invest(args, headers))
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
 @app.route('/investment-calc', methods=['POST'])
 @cross_origin()
 def investment_cal():
