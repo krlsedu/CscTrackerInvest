@@ -77,23 +77,34 @@ class FixedIncome(Interceptor):
         date_movement = movement['buy_date']
         price_obj = stock_handler.get_price(stock_['id'], date_movement, headers)
         price = float(price_obj['price'])
-        date_price = datetime.strptime(price_obj['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
+        type_ = stock_['tx_type']
+        if type_ == "IPCA":
+            date_mask = "%Y-%m"
+        else:
+            date_mask = "%Y-%m-%d"
+        date_price = datetime.strptime(price_obj['date_value'], '%Y-%m-%d %H:%M:%S.%f').strftime(date_mask)
         if date_price < date_movement:
             date_range = pandas.date_range(date_price, date_movement)
             for date in date_range:
-                if date.strftime('%Y-%m-%d') > date_price:
-                    type_ = stock_['tx_type']
+                if date.strftime(date_mask) > date_price:
                     tx_quotient = float(stock_['tx_quotient'] / 100)
                     if type_ == "PRÉ":
                         lt = tx_quotient
+                        lq = ((1 + lt) ** (1 / 365))
+                    elif type_ == "IPCA":
+                        tx_val = self.get_tax_price(type_, date, headers)
+                        lt = float(tx_val['value'] / 100)
+                        lq = lt * tx_quotient
+                        lq = lq + 1
                     else:
                         tx_val = self.get_tax_price(type_, date, headers)
                         lt = float(tx_val['value'] / 100)
                         lt = lt * tx_quotient
-                    lq = ((1 + lt) ** (1 / 365))
+                        lq = ((1 + lt) ** (1 / 365))
                     price = price * lq
                     stock_['price'] = float(price)
                     self.add_stock_price(stock_, headers, date.strftime('%Y-%m-%d'))
+                    date_price = date.strftime(date_mask)
         else:
             return price_obj
         http_repository.update("stocks", ["id"], stock_, headers)
