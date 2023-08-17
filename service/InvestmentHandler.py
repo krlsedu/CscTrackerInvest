@@ -1468,7 +1468,26 @@ class InvestmentHandler(Interceptor):
 
         for key in args_:
             select = select.replace(":" + key, "'" + args_[key] + "'")
-        return http_repository.execute_select(select, headers)
+        result_ = http_repository.execute_select(select, headers)
+        if args_['tipo'] != 'carteira':
+            args_carteira_ = {}
+            args_carteira_['ticker'] = 'all'
+            args_carteira_['tipo'] = 'carteira'
+            args_carteira_['indice'] = 'nenhum'
+            args_carteira_['data_fim'] = args_['data_fim']
+            args_carteira_['data_ini'] = args_['data_ini']
+            args_carteira_['invest_name'] = 'all'
+            result_carteira_ = self.get_resume_invest(args_carteira_, headers)
+            result_ = result_ + result_carteira_
+        if 'sentido' in args_:
+            reverse_ = args_['sentido'] == 'desc'
+        else:
+            reverse_ = True
+        if 'sorted_by' in args:
+            result_ = sorted(result_, key=lambda k: k[args_['sorted_by']], reverse=reverse_)
+        else:
+            result_ = sorted(result_, key=lambda k: k['ganho_mensalizado_medio'], reverse=reverse_)
+        return result_
 
     def load_prices(self, ticker, type, name=None, headers=None, data_=None):
         if name is None:
