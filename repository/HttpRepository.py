@@ -147,9 +147,12 @@ class HttpRepository(Interceptor):
                 text = self.get_page_text(stock['ticker'], headers)
                 soup = BeautifulSoup(text, "html5lib")
                 self.get_values(soup, stock)
-                if stock["investment_type_id"] <= 4:
-                    stock['pvp'] = self.get_info(stock, "vp", headers)
-
+                try:
+                    if stock["investment_type_id"] <= 4:
+                        stock['pvp'] = self.get_info(stock, "vp", headers)
+                except Exception as e:
+                    print(e, stock['ticker'], "pvp")
+                    pass
                 requests.post(url_repository + 'stocks', headers=headers,
                               params={"ticker": stock['ticker']}, json=stock)
             except Exception as e:
