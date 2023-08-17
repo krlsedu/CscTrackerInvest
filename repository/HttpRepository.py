@@ -217,7 +217,7 @@ class HttpRepository(Interceptor):
 
         return stock
 
-    def get_info(self, stock_, atributo, tag="sapn", headers=None, is_number=True):
+    def get_info(self, stock_, atributo, headers=None, tag="span", is_number=True):
         url_ = 'https://investidor10.com.br/fiis/'
         if stock_['investment_type_id'] == 1:
             url_ = 'https://investidor10.com.br/acoes/'
