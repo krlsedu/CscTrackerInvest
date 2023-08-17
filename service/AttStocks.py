@@ -69,7 +69,6 @@ class AttStocks(Interceptor):
                 else:
                     try:
                         stock_['price'] = acao['price']
-                        stock_['pvp'] = acao['p_VP']
                         stock_['pl'] = acao['p_L']
                         stock_['ev_ebit'] = acao['eV_Ebit']
                         stock_['avg_liquidity'] = acao['liquidezMediaDiaria']
@@ -116,7 +115,7 @@ class AttStocks(Interceptor):
                 company_ = company_.replace('/bdrs/', '')
                 print(f"Atualizando BDR: {company_} - {count_}/{len(bdrs)}")
                 stock_ = investment_handler.get_stock(company_, headers)
-                stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+                stock_, _ = http_repository.get_values_by_ticker(stock_, True, headers)
 
                 stock_ = investment_handler.att_dividend_info(stock_, headers)
 
@@ -164,7 +163,6 @@ class AttStocks(Interceptor):
                     try:
                         stock_['price'] = fii['price']
                         stock_['dy'] = fii['dy']
-                        stock_['pvp'] = fii['p_vp']
                         stock_['last_dividend'] = fii['lastdividend']
                         stock_['avg_liquidity'] = fii['liquidezmediadiaria']
                     except Exception as e:

@@ -147,6 +147,8 @@ class HttpRepository(Interceptor):
                 text = self.get_page_text(stock['ticker'], headers)
                 soup = BeautifulSoup(text, "html5lib")
                 self.get_values(soup, stock)
+                if stock["investment_type_id"] <= 4:
+                    stock['pvp'] = self.get_info(stock, "vp", headers)
 
                 requests.post(url_repository + 'stocks', headers=headers,
                               params={"ticker": stock['ticker']}, json=stock)
@@ -190,18 +192,18 @@ class HttpRepository(Interceptor):
         except Exception as e:
             stock["pl"] = 0
 
-        try:
-            txt = self.find_value(soup, "P/VP", "text", 3, 0)
-            stock["pvp"] = float(txt.replace(".", "").replace(",", "."))
-        except Exception as e:
-            stock["pvp"] = 0
+        if stock["investment_type_id"] > 4:
+            try:
+                txt = self.find_value(soup, "P/VP", "text", 3, 0)
+                stock["pvp"] = float(txt.replace(".", "").replace(",", "."))
+            except Exception as e:
+                stock["pvp"] = 0
 
         try:
             txt = self.find_value(soup, "Liquidez média diária", "text", 3, 0)
             stock["avg_liquidity"] = float(txt.replace(".", "").replace(",", "."))
         except Exception as e:
             stock["avg_liquidity"] = 0
-
 
         # try:
         #     txt = self.find_value(soup, "earning-section", "id", 0, 0, "input", "value")
@@ -211,6 +213,19 @@ class HttpRepository(Interceptor):
         #     pass
 
         return stock
+
+    def get_info(self, stock_, atributo, tag="sapn", headers=None, is_number=True):
+        url_ = 'https://investidor10.com.br/fiis/'
+        if stock_['investment_type_id'] == 1:
+            url_ = 'https://investidor10.com.br/acoes/'
+        elif stock_['investment_type_id'] == 4:
+            url_ = 'https://investidor10.com.br/bdrs/'
+        soup_ = self.get_soup(url_ + stock_['ticker'], headers)
+        value_ = self.find_value(soup_, '_card ' + atributo, "class")[0]
+        value_ = self.find_value(value_, '_card-body', "class")[0].find_all(tag)[0].text
+        if is_number:
+            value_ = float(value_.replace(".", "").replace(",", "."))
+        return value_
 
     def find_value(self, soup, text, type, parents=0, children=None, child_Type="strong", value="text"):
         if type == "text":
