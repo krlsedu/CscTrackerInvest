@@ -1458,11 +1458,13 @@ class InvestmentHandler(Interceptor):
 
         # if data_inicio not in args_ add data fim as yyyy-MM-dd
         if 'data_fim' not in args_:
-            args_['data_fim'] = datetime.now().strftime("%Y-%m-%d")
+            now = datetime.now()
+            now = now + timedelta(days=1)
+            args_['data_fim'] = now.strftime("%Y-%m-%d")
 
         # if data_ini not in args_ add data ini as 2022-01-01
         if 'data_ini' not in args_:
-            args_['data_ini'] = '2022-01-01'
+            args_['data_ini'] = '2021-12-01'
 
         for key in args_:
             select = select.replace(":" + key, "'" + args_[key] + "'")
