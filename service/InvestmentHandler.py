@@ -1469,6 +1469,13 @@ class InvestmentHandler(Interceptor):
         for key in args_:
             select = select.replace(":" + key, "'" + args_[key] + "'")
         result_ = http_repository.execute_select(select, headers)
+        results_save_ = []
+        for res_ in result_:
+            result_save_ = res_
+            result_save_['data_ini'] = args_['data_ini']
+            result_save_['data_fim'] = args_['data_fim']
+            results_save_.append(result_save_)
+        http_repository.insert("user_resume_values", results_save_, headers)
         if args_['tipo'] != 'carteira':
             args_carteira_ = {}
             args_carteira_['ticker'] = 'all'
