@@ -130,6 +130,14 @@ def add_resume_invest_period():
     return {}, 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/re-add-resume-invest-period', methods=['GET'])
+@cross_origin()
+def re_add_resume_invest_period():
+    headers = request.headers
+    investment_handler.re_add_resumes_period(headers)
+    return {}, 200, {'Content-Type': 'application/json'}
+
+
 @app.route('/investment-calc', methods=['POST'])
 @cross_origin()
 def investment_cal():

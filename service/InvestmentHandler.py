@@ -1439,6 +1439,24 @@ class InvestmentHandler(Interceptor):
 
         raise Exception("Não foi possível salvar a venda")
 
+    def re_add_resumes_period(self, headers):
+        args_ = {}
+        now = datetime.now()
+        now = now + timedelta(days=1)
+        args_['data_fim'] = now.strftime("%Y-%m-%d")
+        args_['data_ini'] = '2021-12-01'
+        args_['refazer_data_fim'] = 'S'
+        args_['refazer_data_ini'] = 'N'
+        date_range = pandas.date_range(args_['data_ini'], args_['data_fim'])
+        # fazer um for reverso com o date_range
+        for date in reversed(date_range):
+            args_['data_ini'] = date.strftime("%Y-%m-%d")
+            try:
+                self.add_resumes_period(args_, headers)
+            except Exception as e:
+                print(e)
+                pass
+
     def add_resumes_period(self, args, headers):
         args_ = {}
         for key in args:
@@ -1471,8 +1489,10 @@ class InvestmentHandler(Interceptor):
         # if data_ini not in args_ add data ini as 2022-01-01
         if 'data_ini' not in args_:
             args_['data_ini'] = '2021-12-01'
-        tipos = ['ativo', 'tipo']
+        tipos = ['tipo', 'ativo']
         for tipo in tipos:
+            if tipo == 'ativo':
+                args_['indice'] = 'nenhum'
             args_['tipo'] = tipo
             date_range = pandas.date_range(args_['data_ini'], args_['data_fim'])
             data_ini_ = args_['data_ini']
@@ -1483,7 +1503,7 @@ class InvestmentHandler(Interceptor):
                 msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi solicitado. Os argumentos são: {args_}"
                 request_handler.inform_to_client(args_, "Resumo por período solicitado", headers, msg_)
                 for date in date_range:
-                    print(tipo + " data fim -> " + date.strftime("%Y-%m-%d"))
+                    print(tipo + " data ini -> " + data_ini_ + " data fim -> " + date.strftime("%Y-%m-%d"))
                     if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
                         args_['data_fim'] = date.strftime("%Y-%m-%d")
                         try:
@@ -1495,6 +1515,7 @@ class InvestmentHandler(Interceptor):
             if args_['refazer_data_ini'] == 'S':
                 for date in date_range:
                     print(tipo + " data ini -> " + date.strftime("%Y-%m-%d"))
+                    print(tipo + " data ini -> " + date.strftime("%Y-%m-%d") + " data fim -> " + data_fim_)
                     if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
                         args_['data_ini'] = date.strftime("%Y-%m-%d")
                         try:
@@ -1504,6 +1525,12 @@ class InvestmentHandler(Interceptor):
                             pass
             args_['data_ini'] = data_ini_
             args_['data_fim'] = data_fim_
+            resume_calculed = {
+                "data_ini": args_['data_ini'],
+                "data_fim": args_['data_fim'],
+                "type": args_['tipo'],
+            }
+            http_repository.insert("user_resume_calculed", resume_calculed, headers)
             msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi adicionado com sucesso. Os argumentos foram: {args_}"
             request_handler.inform_to_client(args_, "Resumo por perído finalizado", headers, msg_)
 
