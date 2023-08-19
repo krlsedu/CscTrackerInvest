@@ -1459,6 +1459,9 @@ class InvestmentHandler(Interceptor):
         if 'refazer_data_fim' not in args_:
             args_['refazer_data_fim'] = 'N'
 
+        if 'refazer_data_ini' not in args_:
+            args_['refazer_data_ini'] = 'S'
+
         # if data_inicio not in args_ add data fim as yyyy-MM-dd
         if 'data_fim' not in args_:
             now = datetime.now()
@@ -1488,15 +1491,17 @@ class InvestmentHandler(Interceptor):
                         except Exception as e:
                             print(e)
                             pass
-            for date in date_range:
-                print(tipo + " data ini -> " + date.strftime("%Y-%m-%d"))
-                if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
-                    args_['data_ini'] = date.strftime("%Y-%m-%d")
-                    try:
-                        self.get_resume_invest(args_, headers)
-                    except Exception as e:
-                        print(e)
-                        pass
+
+            if args_['refazer_data_ini'] == 'S':
+                for date in date_range:
+                    print(tipo + " data ini -> " + date.strftime("%Y-%m-%d"))
+                    if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
+                        args_['data_ini'] = date.strftime("%Y-%m-%d")
+                        try:
+                            self.get_resume_invest(args_, headers)
+                        except Exception as e:
+                            print(e)
+                            pass
             args_['data_ini'] = data_ini_
             args_['data_fim'] = data_fim_
             msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi adicionado com sucesso. Os argumentos foram: {args_}"
