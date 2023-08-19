@@ -112,6 +112,24 @@ def get_resume_invest():
     return dumps, 200, {'Content-Type': 'application/json'}
 
 
+@app.route('/resume-invest-grafic', methods=['GET'])
+@cross_origin()
+def get_resume_invest_grafic():
+    headers = request.headers
+    args = request.args
+    dumps = json.dumps(investment_handler.get_resume_invest_grafic(args, headers))
+    return dumps, 200, {'Content-Type': 'application/json'}
+
+
+@app.route('/add-resume-invest-period', methods=['GET'])
+@cross_origin()
+def add_resume_invest_period():
+    headers = request.headers
+    args = request.args
+    investment_handler.add_resumes_period(args, headers)
+    return {}, 200, {'Content-Type': 'application/json'}
+
+
 @app.route('/investment-calc', methods=['POST'])
 @cross_origin()
 def investment_cal():

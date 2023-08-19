@@ -3,6 +3,7 @@ import json
 from datetime import timedelta, datetime, timezone
 from statistics import stdev, mean
 
+import pandas
 import pandas as pd
 import pytz
 import requests
@@ -1437,6 +1438,124 @@ class InvestmentHandler(Interceptor):
             return apply_stock
 
         raise Exception("Não foi possível salvar a venda")
+
+    def add_resumes_period(self, args, headers):
+        args_ = {}
+        for key in args:
+            args_[key] = args[key]
+        # check if exist arg ticker case not exist add text all
+        if 'ticker' not in args_:
+            args_['ticker'] = 'all'
+
+        if 'tipo' not in args_:
+            args_['tipo'] = 'all'
+
+        if 'indice' not in args_:
+            args_['indice'] = 'all'
+
+        if 'invest_name' not in args_:
+            args_['invest_name'] = 'all'
+
+        # if data_inicio not in args_ add data fim as yyyy-MM-dd
+        if 'data_fim' not in args_:
+            now = datetime.now()
+            now = now + timedelta(days=1)
+            args_['data_fim'] = now.strftime("%Y-%m-%d")
+
+        # if data_ini not in args_ add data ini as 2022-01-01
+        if 'data_ini' not in args_:
+            args_['data_ini'] = '2021-12-01'
+
+        date_range = pandas.date_range(args_['data_ini'], args_['data_fim'])
+        data_ini_ = args_['data_ini']
+        data_fim_ = args_['data_fim']
+
+        args_['data_ini'] = data_ini_
+
+        msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi solicitado. Os argumentos são: {args_}"
+        request_handler.inform_to_client(args_, "Resumo por período solicitado", headers, msg_)
+        for date in date_range:
+            if data_ini_ < date.strftime("%Y-%m-%d") < data_fim_:
+                args_['data_fim'] = date.strftime("%Y-%m-%d")
+                self.get_resume_invest(args_, headers)
+        for date in date_range:
+            if data_ini_ < date.strftime("%Y-%m-%d") < data_fim_:
+                args_['data_ini'] = date.strftime("%Y-%m-%d")
+                self.get_resume_invest(args_, headers)
+        args_['data_ini'] = data_ini_
+        args_['data_fim'] = data_fim_
+        msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi adicionado com sucesso. Os argumentos foram: {args_}"
+        request_handler.inform_to_client(args_, "Resumo por perído finalizado", headers, msg_)
+
+    def get_resume_invest_grafic(self, args, headers):
+        select = utils.read_file("static/resume_grafic.sql")
+        args_ = {}
+        for key in args:
+            args_[key] = args[key]
+        # check if exist arg ticker case not exist add text all
+        if 'ticker' not in args_:
+            args_['ticker'] = 'all'
+
+        if 'tipo' not in args_:
+            args_['tipo'] = 'all'
+
+        if 'date_mask' not in args_:
+            args_['date_mask'] = 'YYYY-MM'
+
+        if 'indice' not in args_:
+            args_['indice'] = 'all'
+
+        if 'invest_name' not in args_:
+            args_['invest_name'] = 'all'
+
+        # if data_inicio not in args_ add data fim as yyyy-MM-dd
+        if 'data_fim' not in args_:
+            now = datetime.now()
+            now = now + timedelta(days=1)
+            args_['data_fim'] = now.strftime("%Y-%m-%d")
+
+        # if data_ini not in args_ add data ini as 2022-01-01
+        if 'data_ini' not in args_:
+            args_['data_ini'] = '2021-12-01'
+
+        for key in args_:
+            if key == 'ticker':
+                names = args_[key].split(',')
+                names_ = ""
+                for name in names:
+                    names_ = names_ + "'" + name + "',"
+                names_ = names_[:-1]
+                select = select.replace(":" + key, names_)
+            elif key == 'sorted_by':
+                select = select.replace(":" + key, args_[key])
+            else:
+                select = select.replace(":" + key, "'" + args_[key] + "'")
+        result_ = http_repository.execute_select(select, headers)
+
+        dates = []
+        labels = []
+        serie = {}
+        for res_ in result_:
+            if res_['date_time'] not in dates:
+                dates.append(res_['date_time'])
+            if res_['label'] not in labels:
+                labels.append(res_['label'])
+            serie[res_['date_time'] + res_['label']] = res_['value']
+        for date in dates:
+            for label in labels:
+                if date + label not in serie:
+                    serie[date + label] = 0
+        series = []
+        for label in labels:
+            serie_ = {'name': label, 'data': []}
+            for date in dates:
+                serie_['data'].append(serie[date + label])
+            series.append(serie_)
+        result_ = {
+            "categories": dates,
+            "series": series
+        }
+        return result_
 
     def get_resume_invest(self, args, headers):
         select = utils.read_file("static/Resume.sql")
