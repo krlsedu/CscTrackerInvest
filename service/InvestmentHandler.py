@@ -1456,6 +1456,9 @@ class InvestmentHandler(Interceptor):
         if 'invest_name' not in args_:
             args_['invest_name'] = 'all'
 
+        if 'refazer_data_fim' not in args_:
+            args_['refazer_data_fim'] = 'N'
+
         # if data_inicio not in args_ add data fim as yyyy-MM-dd
         if 'data_fim' not in args_:
             now = datetime.now()
@@ -1465,27 +1468,39 @@ class InvestmentHandler(Interceptor):
         # if data_ini not in args_ add data ini as 2022-01-01
         if 'data_ini' not in args_:
             args_['data_ini'] = '2021-12-01'
+        tipos = ['ativo', 'tipo']
+        for tipo in tipos:
+            args_['tipo'] = tipo
+            date_range = pandas.date_range(args_['data_ini'], args_['data_fim'])
+            data_ini_ = args_['data_ini']
+            data_fim_ = args_['data_fim']
 
-        date_range = pandas.date_range(args_['data_ini'], args_['data_fim'])
-        data_ini_ = args_['data_ini']
-        data_fim_ = args_['data_fim']
-
-        args_['data_ini'] = data_ini_
-
-        msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi solicitado. Os argumentos são: {args_}"
-        request_handler.inform_to_client(args_, "Resumo por período solicitado", headers, msg_)
-        for date in date_range:
-            if data_ini_ < date.strftime("%Y-%m-%d") < data_fim_:
-                args_['data_fim'] = date.strftime("%Y-%m-%d")
-                self.get_resume_invest(args_, headers)
-        for date in date_range:
-            if data_ini_ < date.strftime("%Y-%m-%d") < data_fim_:
-                args_['data_ini'] = date.strftime("%Y-%m-%d")
-                self.get_resume_invest(args_, headers)
-        args_['data_ini'] = data_ini_
-        args_['data_fim'] = data_fim_
-        msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi adicionado com sucesso. Os argumentos foram: {args_}"
-        request_handler.inform_to_client(args_, "Resumo por perído finalizado", headers, msg_)
+            args_['data_ini'] = data_ini_
+            if args_['refazer_data_fim'] == 'S':
+                msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi solicitado. Os argumentos são: {args_}"
+                request_handler.inform_to_client(args_, "Resumo por período solicitado", headers, msg_)
+                for date in date_range:
+                    print(tipo + " data fim -> " + date.strftime("%Y-%m-%d"))
+                    if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
+                        args_['data_fim'] = date.strftime("%Y-%m-%d")
+                        try:
+                            self.get_resume_invest(args_, headers)
+                        except Exception as e:
+                            print(e)
+                            pass
+            for date in date_range:
+                print(tipo + " data ini -> " + date.strftime("%Y-%m-%d"))
+                if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
+                    args_['data_ini'] = date.strftime("%Y-%m-%d")
+                    try:
+                        self.get_resume_invest(args_, headers)
+                    except Exception as e:
+                        print(e)
+                        pass
+            args_['data_ini'] = data_ini_
+            args_['data_fim'] = data_fim_
+            msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi adicionado com sucesso. Os argumentos foram: {args_}"
+            request_handler.inform_to_client(args_, "Resumo por perído finalizado", headers, msg_)
 
     def get_resume_invest_grafic(self, args, headers):
         select = utils.read_file("static/resume_grafic.sql")
