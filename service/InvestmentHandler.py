@@ -1447,11 +1447,12 @@ class InvestmentHandler(Interceptor):
         args_['data_ini'] = '2021-12-01'
         args_['refazer_data_fim'] = 'S'
         args_['refazer_data_ini'] = 'N'
+
         if 'data_refazer' in args:
             date_range = pandas.date_range(args_['data_ini'], args['data_refazer'])
         else:
             date_range = pandas.date_range(args['data_refazer'], args_['data_fim'])
-        # fazer um for reverso com o date_range
+
         for date in reversed(date_range):
             args_['data_ini'] = date.strftime("%Y-%m-%d")
             try:
