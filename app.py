@@ -134,7 +134,8 @@ def add_resume_invest_period():
 @cross_origin()
 def re_add_resume_invest_period():
     headers = request.headers
-    investment_handler.re_add_resumes_period(headers)
+    args = request.args
+    investment_handler.re_add_resumes_period(args, headers)
     return {}, 200, {'Content-Type': 'application/json'}
 
 

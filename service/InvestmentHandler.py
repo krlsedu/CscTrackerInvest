@@ -1439,7 +1439,7 @@ class InvestmentHandler(Interceptor):
 
         raise Exception("Não foi possível salvar a venda")
 
-    def re_add_resumes_period(self, headers):
+    def re_add_resumes_period(self, args, headers):
         args_ = {}
         now = datetime.now()
         now = now + timedelta(days=1)
@@ -1447,7 +1447,10 @@ class InvestmentHandler(Interceptor):
         args_['data_ini'] = '2021-12-01'
         args_['refazer_data_fim'] = 'S'
         args_['refazer_data_ini'] = 'N'
-        date_range = pandas.date_range(args_['data_ini'], args_['data_fim'])
+        if 'data_refazer' in args:
+            date_range = pandas.date_range(args_['data_ini'], args_['data_refazer'])
+        else:
+            date_range = pandas.date_range(args['data_refazer'], args_['data_fim'])
         # fazer um for reverso com o date_range
         for date in reversed(date_range):
             args_['data_ini'] = date.strftime("%Y-%m-%d")
