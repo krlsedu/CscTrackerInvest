@@ -38,7 +38,7 @@ where urm.data_ini = :data_ini
   and urm.data_fim between :data_ini and :data_fim
   and urm.user_id = :user_id
   and urm.name in ('Carteira')
-  and ('carteira' = :tipo or 'all' = :tipo or 'all' = :indice)
+  and ('carteira' = :tipo or 'nenhum' <> :indice)
 union
 select distinct urm.name                                                                                                                     as label,
                 to_char(urm.data_fim, :date_mask)                                                                                            as date_time,
