@@ -63,6 +63,26 @@ class FixedIncome(Interceptor):
         if date is not None:
             stock_price['date_value'] = date
         http_repository.insert("stocks_prices", stock_price, headers)
+        try:
+
+            try:
+                date_value_ = datetime.strptime(stock_price['date_value'], '%Y-%m-%d').strftime('%Y-%m-%d')
+            except:
+                date_value_ = datetime.now().strftime('%Y-%m-%d')
+            filter = {
+                "investment_id": stock_price['investment_id'],
+                "date_value": date_value_
+            }
+            price_agg = http_repository.get_object_new("stocks_prices_agregated", filter, headers)
+            if price_agg is not None and price_agg['id'] is not None:
+                price_agg['price'] = stock_price['price']
+                http_repository.update("stocks_prices_agregated", ["id"], price_agg, headers)
+            else:
+                stock_price['date_value'] = date_value_
+                http_repository.insert("stocks_prices_agregated", stock_price, headers)
+        except Exception as e:
+            print("add_price - fixIncome -> ", stock_price, e)
+            pass
 
     def get_stock_price_by_ticker(self, ticker_, headers, date=None):
         stock_ = {

@@ -80,12 +80,36 @@ class HttpRepository(Interceptor):
         except Exception as e:
             raise e
 
+    def get_object_new(self, table, data={}, headers=None):
+        params = {}
+        for key in data.keys():
+            params[key] = data[key]
+        try:
+            response = requests.get(url_repository + 'single/' + table, params=params, headers=headers)
+            if response.status_code < 200 or response.status_code > 299:
+                raise Exception(f'Error getting data: {response.text}')
+            return response.json()
+        except Exception as e:
+            raise e
+
     def get_all_objects(self, table, headers=None):
         return self.get_objects(table, [], {}, headers)
 
     def get_objects(self, table, keys=[], data={}, headers=None):
         params = {}
         for key in keys:
+            params[key] = data[key]
+        try:
+            response = requests.get(url_repository + table, params=params, headers=headers)
+            if response.status_code < 200 or response.status_code > 299:
+                raise Exception(f'Error getting data: {response.text}')
+            return response.json()
+        except Exception as e:
+            raise e
+
+    def get_objects_new(self, table, data={}, headers=None):
+        params = {}
+        for key in data.keys():
             params[key] = data[key]
         try:
             response = requests.get(url_repository + table, params=params, headers=headers)

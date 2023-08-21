@@ -171,6 +171,25 @@ class InvestmentHandler(Interceptor):
         try:
             if price['price'] is not None:
                 http_repository.insert("stocks_prices", price, headers)
+                try:
+                    try:
+                        date_value_ = datetime.strptime(price['date_value'], '%Y-%m-%d').strftime('%Y-%m-%d')
+                    except:
+                        date_value_ = datetime.now().strftime('%Y-%m-%d')
+                    _filter = {
+                        "investment_id": price['investment_id'],
+                        "date_value": date_value_
+                    }
+                    price_agg = http_repository.get_object_new("stocks_prices_agregated", _filter, headers)
+                    if price_agg is not None and price_agg['id'] is not None:
+                        price_agg['price'] = price['price']
+                        http_repository.update("stocks_prices_agregated", ["id"], price_agg, headers)
+                    else:
+                        price['date_value'] = date_value_
+                        http_repository.insert("stocks_prices_agregated", price, headers)
+                except Exception as e:
+                    print("add_price - investmentHandler -> ", price, e)
+                    pass
         except Exception as e:
             print(e)
 
