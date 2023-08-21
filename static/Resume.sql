@@ -49,7 +49,7 @@ from (select name,
                             and usm_ini.user_id = us.user_id
                             and usm_ini.date <= :data_ini)                as quantity_ini,
                          coalesce((select sp_ini.price
-                                   from stocks_prices sp_ini
+                                   from stocks_prices_agregated sp_ini
                                    where sp_ini.investment_id = s.id
                                      and sp_ini.date_value <= :data_ini
                                    order by date_value desc
@@ -62,7 +62,7 @@ from (select name,
                             and usm_fim.user_id = us.user_id
                             and usm_fim.date <= :data_fim)                as quantity_fim,
                          (select sp_fim.price
-                          from stocks_prices sp_fim
+                          from stocks_prices_agregated sp_fim
                           where sp_fim.investment_id = s.id
                             and sp_fim.date_value <= :data_fim
                           order by date_value desc
@@ -125,14 +125,14 @@ from (select name,
                   union
                   select 1                      as quantity_ini,
                          coalesce((select sp_ini.price
-                                   from stocks_prices sp_ini
+                                   from stocks_prices_agregated sp_ini
                                    where sp_ini.investment_id = s.id
                                      and sp_ini.date_value <= :data_ini
                                    order by date_value desc
                                    limit 1), 0) as price_ini,
                          1                      as quantity_fim,
                          (select sp_fim.price
-                          from stocks_prices sp_fim
+                          from stocks_prices_agregated sp_fim
                           where sp_fim.investment_id = s.id
                             and sp_fim.date_value <= :data_fim
                           order by date_value desc
