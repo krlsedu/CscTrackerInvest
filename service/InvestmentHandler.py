@@ -1512,7 +1512,10 @@ class InvestmentHandler(Interceptor):
         # if data_ini not in args_ add data ini as 2022-01-01
         if 'data_ini' not in args_:
             args_['data_ini'] = '2021-12-01'
-        tipos = ['tipo', 'ativo']
+        if args_['tipo'] == 'all':
+            tipos = ['tipo', 'ativo']
+        else:
+            tipos = [args_['tipo']]
         for tipo in tipos:
             if tipo == 'ativo':
                 args_['indice'] = 'nenhum'
