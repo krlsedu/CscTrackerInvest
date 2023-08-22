@@ -1467,6 +1467,11 @@ class InvestmentHandler(Interceptor):
         args_['refazer_data_fim'] = 'S'
         args_['refazer_data_ini'] = 'N'
 
+        if 'tipo' not in args_:
+            args_['tipo'] = 'all'
+        else:
+            args_['tipo'] = args['tipo']
+
         if 'data_refazer' in args:
             date_range = pandas.date_range(args_['data_ini'], args['data_refazer'])
         else:

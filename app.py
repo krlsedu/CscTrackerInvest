@@ -135,7 +135,7 @@ def add_resume_invest_period():
 def re_add_resume_invest_period():
     headers = request.headers
     args = request.args
-    threading.Thread(target=att_stocks.re_add_resumes_period, args=(args, headers,)).start()
+    threading.Thread(target=re_add_resume_invest_period_tr, args=(args, headers,)).start()
     return {}, 200, {'Content-Type': 'application/json'}
 
 
