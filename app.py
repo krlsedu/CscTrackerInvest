@@ -126,8 +126,11 @@ def get_resume_invest_grafic():
 def add_resume_invest_period():
     headers = request.headers
     args = request.args
-    investment_handler.add_resumes_period(args, headers)
+    threading.Thread(target=add_resume_invest_period_tr, args=(args, headers,)).start()
     return {}, 200, {'Content-Type': 'application/json'}
+
+def add_resume_invest_period_tr(args, headers):
+    investment_handler.add_resumes_period(args, headers)
 
 
 @app.route('/re-add-resume-invest-period', methods=['GET'])
