@@ -1467,7 +1467,7 @@ class InvestmentHandler(Interceptor):
         args_['refazer_data_fim'] = 'S'
         args_['refazer_data_ini'] = 'N'
 
-        if 'tipo' not in args_:
+        if 'tipo' not in args:
             args_['tipo'] = 'all'
         else:
             args_['tipo'] = args['tipo']
