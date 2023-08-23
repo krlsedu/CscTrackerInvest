@@ -1682,8 +1682,8 @@ class InvestmentHandler(Interceptor):
         results_save_ = []
         for res_ in result_:
             result_save_ = res_
-            result_save_['data_ini'] = args_['data_ini']
-            result_save_['data_fim'] = args_['data_fim']
+            result_save_['data_ini'] = data_ini_
+            result_save_['data_fim'] = data_fim_
             results_save_.append(result_save_)
         http_repository.insert("user_resume_values", results_save_, headers)
         if args_['tipo'] != 'carteira':
