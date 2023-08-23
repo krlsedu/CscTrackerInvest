@@ -1471,7 +1471,7 @@ class InvestmentHandler(Interceptor):
     def re_add_resumes_period(self, args, headers):
         args_ = {}
         now = datetime.now()
-        now = now + timedelta(days=1)
+        now = now - timedelta(days=1)
         args_['data_fim'] = now.strftime("%Y-%m-%d")
         args_['data_ini'] = '2021-12-01'
         args_['refazer_data_fim'] = 'S'
@@ -1521,7 +1521,7 @@ class InvestmentHandler(Interceptor):
         # if data_inicio not in args_ add data fim as yyyy-MM-dd
         if 'data_fim' not in args_:
             now = datetime.now()
-            now = now + timedelta(days=1)
+            now = now - timedelta(days=1)
             args_['data_fim'] = now.strftime("%Y-%m-%d")
 
         # if data_ini not in args_ add data ini as 2022-01-01
@@ -1672,7 +1672,8 @@ class InvestmentHandler(Interceptor):
         # if data_ini not in args_ add data ini as 2022-01-01
         if 'data_ini' not in args_:
             args_['data_ini'] = '2021-12-01'
-
+        args_['data_ini'] = args_['data_ini'] + " 23:59:59.999"
+        args_['data_fim'] = args_['data_fim'] + " 23:59:59.999"
         for key in args_:
             select = select.replace(":" + key, "'" + args_[key] + "'")
         result_ = http_repository.execute_select(select, headers)
