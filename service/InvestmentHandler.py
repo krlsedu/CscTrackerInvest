@@ -119,7 +119,8 @@ class InvestmentHandler(Interceptor):
                     pass
                 http_repository.insert("user_stocks_movements", movement, headers)
             try:
-                request_handler.inform_to_client(movement, "Movimento adicionado!", headers, movement)
+                msg_ = "Movimento adicionado com sucesso: " + str(movement)
+                request_handler.inform_to_client(movement, "Movimento", headers, msg_)
             except Exception as e:
                 print(e)
                 pass
@@ -127,7 +128,8 @@ class InvestmentHandler(Interceptor):
         except Exception as e:
             print(e)
             try:
-                request_handler.inform_to_client(movement, "Ops ocorreu um erro ao adicionar o movimento!", headers, str(e))
+                msg_ = "Erro ao adicionar movimento: " + str(e) + " - " + str(movement)
+                request_handler.inform_to_client(movement, "MovimentoErro", headers, msg_)
             except Exception as e:
                 print(e)
                 pass
