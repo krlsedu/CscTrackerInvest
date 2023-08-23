@@ -1672,8 +1672,10 @@ class InvestmentHandler(Interceptor):
         # if data_ini not in args_ add data ini as 2022-01-01
         if 'data_ini' not in args_:
             args_['data_ini'] = '2021-12-01'
-        args_['data_ini'] = args_['data_ini'] + " 23:59:59.999"
-        args_['data_fim'] = args_['data_fim'] + " 23:59:59.999"
+        data_ini_ = args_['data_ini']
+        args_['data_ini'] = data_ini_ + " 23:59:59.999"
+        data_fim_ = args_['data_fim']
+        args_['data_fim'] = data_fim_ + " 23:59:59.999"
         for key in args_:
             select = select.replace(":" + key, "'" + args_[key] + "'")
         result_ = http_repository.execute_select(select, headers)
@@ -1689,8 +1691,8 @@ class InvestmentHandler(Interceptor):
             args_carteira_['ticker'] = 'all'
             args_carteira_['tipo'] = 'carteira'
             args_carteira_['indice'] = 'nenhum'
-            args_carteira_['data_fim'] = args_['data_fim']
-            args_carteira_['data_ini'] = args_['data_ini']
+            args_carteira_['data_fim'] = data_fim_
+            args_carteira_['data_ini'] = data_ini_
             args_carteira_['invest_name'] = 'all'
             result_carteira_ = self.get_resume_invest(args_carteira_, headers)
             result_ = result_ + result_carteira_
