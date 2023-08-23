@@ -118,9 +118,19 @@ class InvestmentHandler(Interceptor):
                 except:
                     pass
                 http_repository.insert("user_stocks_movements", movement, headers)
+            try:
+                request_handler.inform_to_client(movement, "Movimento adicionado!", headers, movement)
+            except Exception as e:
+                print(e)
+                pass
             return {"status": "success", "message": "Movement added"}
         except Exception as e:
             print(e)
+            try:
+                request_handler.inform_to_client(movement, "Ops ocorreu um erro ao adicionar o movimento!", headers, str(e))
+            except Exception as e:
+                print(e)
+                pass
             return {"status": "error", "message": e}
 
     def add_profit_loss(self, profit_loss_value, movement, headers=None):

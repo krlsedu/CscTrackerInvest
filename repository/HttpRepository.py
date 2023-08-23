@@ -242,12 +242,15 @@ class HttpRepository(Interceptor):
         return stock
 
     def get_info(self, stock_, atributo, headers=None, tag="span", is_number=True):
-        url_ = 'https://investidor10.com.br/fiis/'
+        url_ = 'https://investidor10.com.br/fiis/' + stock_['ticker']
         if stock_['investment_type_id'] == 1:
-            url_ = 'https://investidor10.com.br/acoes/'
+            url_ = 'https://investidor10.com.br/acoes/' + stock_['ticker']
         elif stock_['investment_type_id'] == 4:
-            url_ = 'https://investidor10.com.br/bdrs/'
-        soup_ = self.get_soup(url_ + stock_['ticker'], headers)
+            url_ = 'https://investidor10.com.br/bdrs/' + stock_['ticker']
+        elif stock_['investment_type_id'] == 1001:
+            ticker_ = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
+            url_ = 'https://investidor10.com.br/indices/' + ticker_
+        soup_ = self.get_soup(url_, headers)
         value_ = self.find_value(soup_, '_card ' + atributo, "class")[0]
         value_ = self.find_value(value_, '_card-body', "class")[0].find_all(tag)[0].text
         if is_number:

@@ -411,6 +411,9 @@ class AttStocks(Interceptor):
                 stock_ = investment_handler.get_stock(fii['ticker'], headers)
                 if stock_['tx_type'] is None:
                     investment_handler.att_price_yahoo(stock_, headers)
+                    stock_['price'] = http_repository.get_info(stock_, "cotacao", headers)
+                    investment_handler.add_stock_price(stock_, headers)
+                    http_repository.update("stocks", ["ticker"], stock_, headers)
                 else:
                     movement = {
                         "buy_date": datetime.now().strftime('%Y-%m-%d'),
