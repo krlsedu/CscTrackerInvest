@@ -1,7 +1,7 @@
 #!groovy
 env.RELEASE_COMMIT = "1";
 env.VERSION_NAME = "";
-env.SERVICE_NAME = "csctracker_services_invest"
+env.SERVICE_NAME = "csctracker_service_invest"
 env.IMAGE_NAME = "csctracker-invest"
 env.REPOSITORY_NAME = "CscTrackerInvest"
 
