@@ -366,7 +366,10 @@ class InvestmentHandler(Interceptor):
         if stocks.__len__() > 0:
             stocks_consolidated = []
             segments = []
+            count = 0
             for stock in stocks:
+                count += 1
+                print("Atualizando " + str(count) + " de " + str(stocks.__len__()) + " - " + str(stock['investment_id']))
                 if stock['quantity'] > 0:
                     segment = {}
                     stock_consolidated = {}
