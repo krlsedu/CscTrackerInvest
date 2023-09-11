@@ -59,10 +59,21 @@ class InvestmentHandler(Interceptor):
             else:
                 stock = fixed_income_handler.get_stock(movement, headers)
                 movement['ticker'] = stock['ticker']
+                try:
+                    movement['buy_date']
+                except:
+                    movement['buy_date'] = datetime.now().strftime('%Y-%m-%d')
                 price = fixed_income_handler.get_stock_price(movement, headers)
                 movement['price'] = float(price['price'])
                 movement['date'] = movement['buy_date']
-                movement['quantity'] = float(movement['quantity']) / movement['price']
+                try:
+                    movement['quantity'] = float(movement['quantity']) / movement['price']
+                except:
+                    filter_ = {
+                        "investment_id": stock['id']
+                    }
+                    user_stock = http_repository.get_object_new("user_stocks", filter_, headers)
+                    movement['quantity'] = float(user_stock['quantity'])
             try:
                 del movement['fixed_icome']
             except:
