@@ -129,6 +129,7 @@ def add_resume_invest_period():
     threading.Thread(target=add_resume_invest_period_tr, args=(args, headers,)).start()
     return {}, 200, {'Content-Type': 'application/json'}
 
+
 def add_resume_invest_period_tr(args, headers):
     investment_handler.add_resumes_period(args, headers)
 
@@ -264,8 +265,12 @@ def att_user_dividends_info():
 def att_dividends_info():
     print('att-dividends-info requested')
     headers = request.headers
-    att_stocks.att_dividends_info(headers)
+    threading.Thread(target=att_dividends_info_tr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
+
+
+def att_dividends_info_tr(headers):
+    att_stocks.att_dividends_info(headers)
 
 
 def att_prices_thr(headers):
