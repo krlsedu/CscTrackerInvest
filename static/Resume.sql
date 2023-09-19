@@ -2,16 +2,25 @@ select name                       as name,
        days                       as days,
        round(valorizacao_real, 4) as valorizacao_real,
        round(case
-                 when days > 0 then power((valorizacao_real + 1), (1 / (days))) - 1
-                 else power((valorizacao_real + 1), (1 / (real_days))) - 1 end * 100,
+                 when days > 0 then power((abs(valorizacao_real) + 1), (1 / (days))) - 1
+                 else power((abs(valorizacao_real) + 1), (1 / (real_days))) - 1 end * 100 * case
+                                                                                           when valorizacao_real < 0
+                                                                                               then -1
+                                                                                           else 1 end,
              6)                   as ganho_diario_medio,
        round(case
-                 when days > 0 then power(power((valorizacao_real + 1), (1 / (days))), 30) - 1
-                 else power(round(power((valorizacao_real + 1), (1 / (real_days))), 12), 30) - 1 end * 100,
+                 when days > 0 then power(power((abs(valorizacao_real) + 1), (1 / (days))), 30) - 1
+                 else power(round(power((abs(valorizacao_real) + 1), (1 / (real_days))), 12), 30) - 1 end * 100 * case
+                                                                                                                 when valorizacao_real < 0
+                                                                                                                     then -1
+                                                                                                                 else 1 end,
              4)                   as ganho_mensalizado_medio,
        round(case
-                 when days > 0 then power(power((valorizacao_real + 1), (1 / (days))), 365) - 1
-                 else power(round(power((valorizacao_real + 1), (1 / (real_days))), 12), 365) - 1 end * 100,
+                 when days > 0 then power(power((abs(valorizacao_real) + 1), (1 / (days))), 365) - 1
+                 else power(round(power((abs(valorizacao_real) + 1), (1 / (real_days))), 12), 365) - 1 end * 100 * case
+                                                                                                                  when valorizacao_real < 0
+                                                                                                                      then -1
+                                                                                                                  else 1 end,
              2)                   as ganho_anualizado_medio,
        *
 from (select name,
