@@ -257,8 +257,12 @@ def att_prices():
 def att_user_dividends_info():
     print('att-dividends-info requested')
     headers = request.headers
-    att_stocks.att_user_dividends_info(headers)
+    threading.Thread(target=att_user_dividends_info_tr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
+
+
+def att_user_dividends_info_tr(headers):
+    att_stocks.att_dividends_info(headers)
 
 
 @app.route('/att-map-dividends', methods=['POST'])
