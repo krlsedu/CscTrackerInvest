@@ -262,7 +262,7 @@ def att_user_dividends_info():
 
 
 def att_user_dividends_info_tr(headers):
-    att_stocks.att_dividends_info(headers)
+    att_stocks.att_user_dividends_info(headers)
 
 
 @app.route('/att-map-dividends', methods=['POST'])
