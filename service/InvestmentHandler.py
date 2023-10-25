@@ -380,7 +380,8 @@ class InvestmentHandler(Interceptor):
             count = 0
             for stock in stocks:
                 count += 1
-                print("Atualizando " + str(count) + " de " + str(stocks.__len__()) + " - " + str(stock['investment_id']))
+                print(
+                    "Atualizando " + str(count) + " de " + str(stocks.__len__()) + " - " + str(stock['investment_id']))
                 if stock['quantity'] > 0:
                     segment = {}
                     stock_consolidated = {}
@@ -1273,6 +1274,7 @@ class InvestmentHandler(Interceptor):
         amount_types = []
         resume = http_repository.get_object("resume_values", [], {}, headers)
         total_amount = 0
+        resto_total = 0
         for investment_type in perc_ideal_investment_types:
             perc_ideal = investment_type['perc_ideal'] / 100
             type_gruped_values = http_repository.get_object("type_gruped_values", ["type_id"],
@@ -1292,17 +1294,26 @@ class InvestmentHandler(Interceptor):
                 amount_type['amount'] = data['amount'] * (amount / total_amount)
                 http_repository.insert("user_invest_apply_type", amount_type, headers)
 
-            select = f"select * from user_recomendations where user_id = {user_['id']} and investment_type_id = " \
-                     f"{amount_type['investment_type_id']} and rank <= 20 order by rank"
-            user_recomendations = http_repository.execute_select(select, headers)
+            investment_type_id = amount_type['investment_type_id']
             total_amount_stock = 0
             amount_stocks = []
-            for user_recomendation in user_recomendations:
-                amount, stock_ = self.get_amount_value(user_recomendation, resume, headers)
-                if amount > stock_['price']:
-                    total_amount_stock = total_amount_stock + amount
-                    amount_stocks.append({'investment_id': user_recomendation['investment_id'], 'amount': amount,
-                                          'user_invest_apply_id': user_invest_apply['id']})
+            if investment_type_id == 16:
+                amount = amount_type['amount']
+                stock_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
+                total_amount_stock = total_amount_stock + amount
+                amount_stocks.append({'investment_id': stock_['id'], 'amount': amount,
+                                      'user_invest_apply_id': user_invest_apply['id']})
+
+            else:
+                select = f"select * from user_recomendations where user_id = {user_['id']} and investment_type_id = " \
+                         f"{amount_type['investment_type_id']} and rank <= 20 order by rank"
+                user_recomendations = http_repository.execute_select(select, headers)
+                for user_recomendation in user_recomendations:
+                    amount, stock_ = self.get_amount_value(user_recomendation, resume, headers)
+                    if amount > stock_['price']:
+                        total_amount_stock = total_amount_stock + amount
+                        amount_stocks.append({'investment_id': user_recomendation['investment_id'], 'amount': amount,
+                                              'user_invest_apply_id': user_invest_apply['id']})
             amount_stocks_ajust = []
             amount_ajsut = 0
             for amount_stock in amount_stocks:
@@ -1356,7 +1367,30 @@ class InvestmentHandler(Interceptor):
                 if resto_temp == resto:
                     continuar = False
                     print(resto)
+                    resto_total = resto_total + resto
                     break
+        if resto_total > 0:
+            print(resto_total)
+            stock_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
+            user_invest_apply_stock = \
+                http_repository.get_object("user_invest_apply_stock",
+                                           ["investment_id", "user_invest_apply_id"],
+                                           {"investment_id": stock_['id'],
+                                            "user_invest_apply_id": user_invest_apply['id']}, headers)
+
+            if user_invest_apply_stock is None:
+                amount_stock = {'investment_id': stock_['id'],
+                                'amount': resto_total,
+                                'num_quotas': resto_total,
+                                'user_invest_apply_id': user_invest_apply['id']}
+                http_repository.insert("user_invest_apply_stock", amount_stock, headers)
+            else:
+                user_invest_apply_stock['amount'] = user_invest_apply_stock['amount'] + resto_total
+                user_invest_apply_stock['num_quotas'] = user_invest_apply_stock['num_quotas'] + resto_total
+                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
+                                       headers)
+
+
         self.get_sell_sugestions(user_invest_apply, headers)
         return http_repository.get_objects("user_invest_apply_stock",
                                            ['user_invest_apply_id'], {'user_invest_apply_id': user_invest_apply['id']},
@@ -1501,7 +1535,7 @@ class InvestmentHandler(Interceptor):
         if 'data_refazer' in args:
             date_range = pandas.date_range(args_['data_ini'], args['data_refazer'])
         else:
-            date_range = pandas.date_range(args['data_refazer'], args_['data_fim'])
+            date_range = pandas.date_range(args['data_ini'], args_['data_fim'])
 
         for date in reversed(date_range):
             args_['data_ini'] = date.strftime("%Y-%m-%d")
