@@ -1390,7 +1390,6 @@ class InvestmentHandler(Interceptor):
                 http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
                                        headers)
 
-
         self.get_sell_sugestions(user_invest_apply, headers)
         return http_repository.get_objects("user_invest_apply_stock",
                                            ['user_invest_apply_id'], {'user_invest_apply_id': user_invest_apply['id']},
@@ -1457,47 +1456,137 @@ class InvestmentHandler(Interceptor):
         return self.investment_calc_info(user_invest_apply, headers)
 
     def investment_calc_info(self, user_invest_apply, headers):
-        recomendations = {"buy_rec": http_repository.get_objects("user_invest_apply_stock",
+        stock_recomendations = http_repository.get_objects("user_invest_apply_stock",
+                                                           ['user_invest_apply_id'],
+                                                           {'user_invest_apply_id': user_invest_apply['id']},
+                                                           headers)
+        stock_recomendations_ = []
+        for stock_recomendation in stock_recomendations:
+            stock_ = http_repository.get_object("stocks", ["id"], {"id": stock_recomendation['investment_id']},
+                                                headers)
+            renda_fixa = "S" if stock_['investment_type_id'] == 16 else "N";
+            stock_recomendation_ = {
+                "id": stock_recomendation['id'],
+                "ticker": stock_['ticker'],
+                "num_quotas": stock_recomendation['num_quotas'],
+                "num_quotas_invested": stock_recomendation['num_quotas_invested'],
+                "avg_value_quota_invested": stock_recomendation['avg_value_quota_invested'],
+                "amount": stock_recomendation['amount'],
+                "invested": stock_recomendation['invested'],
+                "renda_fixa": renda_fixa,
+                "investment_type_id": stock_['investment_type_id'],
+            }
+            stock_recomendations_.append(stock_recomendation_)
+
+        stock_recomendations_ = sorted(stock_recomendations_, key=lambda k: (k['investment_type_id'], k['ticker']))
+        type_invest_recomendations = http_repository.get_objects("user_invest_apply_type",
                                                                  ['user_invest_apply_id'],
                                                                  {'user_invest_apply_id': user_invest_apply['id']},
-                                                                 headers),
-                          "sell_rec": http_repository.get_objects("user_invest_sell_stock",
-                                                                  ['user_invest_apply_id'],
-                                                                  {'user_invest_apply_id': user_invest_apply['id']},
-                                                                  headers),
-                          "apply_info": user_invest_apply,
-                          "aplly_type": http_repository.get_objects("user_invest_apply_type",
-                                                                    ['user_invest_apply_id'],
-                                                                    {'user_invest_apply_id': user_invest_apply['id']},
-                                                                    headers)
-                          }
-        return recomendations
+                                                                 headers)
+        type_invest_recomendations_ = []
+        for type_invest_recomendation in type_invest_recomendations:
+            type_invest_recomendation_ = {
+                "id": type_invest_recomendation['id'],
+                "investment_type_id": type_invest_recomendation['investment_type_id'],
+                "investment_type": http_repository.get_object("investment_types", ["id"],
+                                                              {"id": type_invest_recomendation['investment_type_id']},
+                                                              headers)['name'],
+                "amount": type_invest_recomendation['amount'],
+                "value_invested": type_invest_recomendation['value_invested']
+            }
+            type_invest_recomendations_.append(type_invest_recomendation_)
+
+        user_invest_apply['stock_recomendations'] = stock_recomendations_
+        user_invest_apply['type_invest_recomendations'] = type_invest_recomendations_
+
+        return user_invest_apply
+
+    def save_all_aplly_stock(self, all_apply_stock, headers):
+        for apply_stock in all_apply_stock:
+            self.save_aplly_stock(apply_stock, headers)
 
     def save_aplly_stock(self, apply_stock, headers):
         user_invest_apply_stock = http_repository.get_object("user_invest_apply_stock", ["id"], apply_stock, headers)
-        if user_invest_apply_stock is not None and user_invest_apply_stock['invested'] == 'N':
-            user_invest_apply_stock['num_quotas_invested'] = apply_stock['num_quotas_invested']
-            user_invest_apply_stock['avg_value_quota_invested'] = apply_stock['avg_value_quota_invested']
-            user_invest_apply_stock['invested'] = 'S'
-            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
+        if (user_invest_apply_stock is not None and user_invest_apply_stock['invested'] == 'N'
+                and apply_stock['num_quotas_invested'] > 0 and apply_stock['avg_value_quota_invested'] > 0):
             user_invest_apply = http_repository.get_object("user_invest_apply", ["id"],
                                                            {"id": user_invest_apply_stock['user_invest_apply_id']},
                                                            headers)
-            user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
-                                                  (user_invest_apply_stock['num_quotas_invested'] *
-                                                   user_invest_apply_stock['avg_value_quota_invested'])
+            stock_ = http_repository.get_object_new("stocks",
+                                                    {"id": user_invest_apply_stock['investment_id']},
+                                                    headers)
+            user_invest_apply_type_ = http_repository.get_object_new("user_invest_apply_type", {
+                "investment_type_id": stock_['investment_type_id'],
+                "user_invest_apply_id": user_invest_apply_stock['user_invest_apply_id']
+            }, headers)
+
+            if stock_['investment_type_id'] == 16:
+                movement = {
+                    "quantity": apply_stock['num_quotas_invested'],
+                    "ticker": apply_stock['ticker'],
+                    "fixed_icome": "S",
+                    "price": apply_stock['avg_value_quota_invested'],
+                    "movement_type": 1,
+                    "tx_type": apply_stock['type'],
+                    "buy_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                    "venc_date": apply_stock['date_venc']
+                }
+
+                user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
+                                                      (apply_stock['num_quotas_invested'])
+
+                user_invest_apply_type_['value_invested'] = user_invest_apply_type_['value_invested'] + \
+                                                            (apply_stock['num_quotas_invested'])
+                avg_value_quota_invested_ = (
+                        user_invest_apply_stock['avg_value_quota_invested'] * user_invest_apply_stock[
+                    'num_quotas_invested'])
+                avg_value_quota_invested_ += (
+                        apply_stock['num_quotas_invested'] * apply_stock['avg_value_quota_invested'])
+                user_invest_apply_stock['num_quotas_invested'] += apply_stock['num_quotas_invested']
+                user_invest_apply_stock['avg_value_quota_invested'] = avg_value_quota_invested_ / \
+                                                                      user_invest_apply_stock['num_quotas_invested']
+                if user_invest_apply_stock['num_quotas_invested'] >= user_invest_apply_stock['num_quotas']:
+                    user_invest_apply_stock['invested'] = 'S'
+
+            else:
+                user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
+                                                      (user_invest_apply_stock['num_quotas_invested'] *
+                                                       user_invest_apply_stock['avg_value_quota_invested'])
+                movement = {
+                    "movement_type": 1,
+                    "ticker": apply_stock['ticker'],
+                    "quantity": apply_stock['num_quotas_invested'],
+                    "price": apply_stock['avg_value_quota_invested'],
+                    "buy_date": datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                }
+                user_invest_apply_stock['invested'] = 'S'
+                user_invest_apply_stock['num_quotas_invested'] = apply_stock['num_quotas_invested']
+                user_invest_apply_stock['avg_value_quota_invested'] = apply_stock['avg_value_quota_invested']
+
+                user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
+                                                      (apply_stock['num_quotas_invested'] *
+                                                       apply_stock['avg_value_quota_invested'])
+
+                user_invest_apply_type_['value_invested'] = user_invest_apply_type_['value_invested'] + \
+                                                            (apply_stock['num_quotas_invested'] *
+                                                             apply_stock['avg_value_quota_invested'])
+            apply_stock['invested'] = user_invest_apply_stock['invested']
+
+            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
             http_repository.update("user_invest_apply", ["id"], user_invest_apply, headers)
-            movement = {
-                "movement_type": 1,
-                "ticker": apply_stock['ticker'],
-                "quantity": apply_stock['num_quotas_invested'],
-                "price": apply_stock['avg_value_quota_invested']
-            }
+            http_repository.update("user_invest_apply_type", ["id"], user_invest_apply_type_, headers)
+
+            added_ = {"status": "Sucesso", "message": "Aporte salvo com sucesso"}
+            msg_ = "Será gerado o movimento de aplicação a seguir: " + str(movement)
+            Utils.inform_to_client(added_, "Aporte", headers, msg_)
             if apply_stock['num_quotas_invested'] > 0 and apply_stock['avg_value_quota_invested'] > 0:
                 self.add_movement(movement, headers)
             return apply_stock
-
-        raise Exception("Não foi possível salvar a aplicação")
+        else:
+            print("Não foi salvo", apply_stock)
+            added_ = {"status": "Cuidado", "message": "Registro sem informação de investimento"}
+            msg_ = "Não foi salvo: " + str(apply_stock)
+            Utils.inform_to_client(added_, "Aporte", headers, msg_)
 
     def save_aplly_stock_sell(self, apply_stock, headers):
         user_invest_sell_stock = http_repository.get_object("user_invest_sell_stock", ["id"], apply_stock, headers)

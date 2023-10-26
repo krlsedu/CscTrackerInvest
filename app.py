@@ -168,6 +168,19 @@ def save_aplly_stock():
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
+@app.route('/save-all-aplly-stock', methods=['POST'])
+@cross_origin()
+def save_all_aplly_stock():
+    try:
+        headers = request.headers
+        dumps = json.dumps(investment_handler.save_all_aplly_stock(request.get_json(), headers))
+        return dumps, 200, {'Content-Type': 'application/json'}
+    except Exception as e:
+        msg = {'error': str(e)}
+        print(e)
+        return json.dumps(msg), 500, {'Content-Type': 'application/json'}
+
+
 @app.route('/last-investment-calc', methods=['GET'])
 @cross_origin()
 def last_investment_cal():
