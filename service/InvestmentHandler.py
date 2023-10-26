@@ -1465,6 +1465,7 @@ class InvestmentHandler(Interceptor):
             stock_ = http_repository.get_object("stocks", ["id"], {"id": stock_recomendation['investment_id']},
                                                 headers)
             renda_fixa = "S" if stock_['investment_type_id'] == 16 else "N";
+            cripto = "S" if stock_['investment_type_id'] == 100 else "N";
             stock_recomendation_ = {
                 "id": stock_recomendation['id'],
                 "ticker": stock_['ticker'],
@@ -1474,11 +1475,14 @@ class InvestmentHandler(Interceptor):
                 "amount": stock_recomendation['amount'],
                 "invested": stock_recomendation['invested'],
                 "renda_fixa": renda_fixa,
+                "cripto": cripto,
                 "investment_type_id": stock_['investment_type_id'],
+                "order": 0 if stock_recomendation['invested'] == 'N' else 1,
             }
             stock_recomendations_.append(stock_recomendation_)
 
-        stock_recomendations_ = sorted(stock_recomendations_, key=lambda k: (k['investment_type_id'], k['ticker']))
+        stock_recomendations_ = sorted(stock_recomendations_,
+                                       key=lambda k: (k['order'], k['investment_type_id'], k['ticker']))
         type_invest_recomendations = http_repository.get_objects("user_invest_apply_type",
                                                                  ['user_invest_apply_id'],
                                                                  {'user_invest_apply_id': user_invest_apply['id']},
@@ -1533,7 +1537,7 @@ class InvestmentHandler(Interceptor):
                 }
 
                 user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
-                                                      (apply_stock['num_quotas_invested'])
+                                                      apply_stock['num_quotas_invested']
 
                 user_invest_apply_type_['value_invested'] = user_invest_apply_type_['value_invested'] + \
                                                             (apply_stock['num_quotas_invested'])
@@ -1570,6 +1574,19 @@ class InvestmentHandler(Interceptor):
                 user_invest_apply_type_['value_invested'] = user_invest_apply_type_['value_invested'] + \
                                                             (apply_stock['num_quotas_invested'] *
                                                              apply_stock['avg_value_quota_invested'])
+                diff_ = user_invest_apply_stock['amount'] - (
+                        user_invest_apply_stock['num_quotas_invested'] *
+                        user_invest_apply_stock['avg_value_quota_invested'])
+
+                stock_rf_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
+                user_invest_apply_stock_rf = (
+                    http_repository.get_object_new("user_invest_apply_stock",
+                                                   {"investment_id": stock_rf_['id'],
+                                                    "user_invest_apply_id": user_invest_apply['id']},
+                                                   headers))
+                user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
+                user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
+                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)
             apply_stock['invested'] = user_invest_apply_stock['invested']
 
             http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
