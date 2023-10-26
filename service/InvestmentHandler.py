@@ -1471,6 +1471,8 @@ class InvestmentHandler(Interceptor):
                 "ticker": stock_['ticker'],
                 "num_quotas": stock_recomendation['num_quotas'],
                 "num_quotas_invested": stock_recomendation['num_quotas_invested'],
+                "value_or_cotas": 0,
+                "tax_or_price": 0,
                 "avg_value_quota_invested": stock_recomendation['avg_value_quota_invested'],
                 "amount": stock_recomendation['amount'],
                 "invested": stock_recomendation['invested'],
@@ -1510,9 +1512,12 @@ class InvestmentHandler(Interceptor):
             self.save_aplly_stock(apply_stock, headers)
 
     def save_aplly_stock(self, apply_stock, headers):
+        if 'cancel' not in apply_stock:
+            apply_stock['cancel'] = 'N'
         user_invest_apply_stock = http_repository.get_object("user_invest_apply_stock", ["id"], apply_stock, headers)
         if (user_invest_apply_stock is not None and user_invest_apply_stock['invested'] == 'N'
-                and apply_stock['num_quotas_invested'] > 0 and apply_stock['avg_value_quota_invested'] > 0):
+                and apply_stock['tax_or_price'] > 0 and apply_stock['value_or_cotas'] > 0
+                and apply_stock['cancel'] == 'N'):
             user_invest_apply = http_repository.get_object("user_invest_apply", ["id"],
                                                            {"id": user_invest_apply_stock['user_invest_apply_id']},
                                                            headers)
@@ -1526,10 +1531,10 @@ class InvestmentHandler(Interceptor):
 
             if stock_['investment_type_id'] == 16:
                 movement = {
-                    "quantity": apply_stock['num_quotas_invested'],
+                    "quantity": apply_stock['value_or_cotas'],
                     "ticker": apply_stock['ticker'],
                     "fixed_icome": "S",
-                    "price": apply_stock['avg_value_quota_invested'],
+                    "price": apply_stock['tax_or_price'],
                     "movement_type": 1,
                     "tx_type": apply_stock['type'],
                     "buy_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
@@ -1537,16 +1542,14 @@ class InvestmentHandler(Interceptor):
                 }
 
                 user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
-                                                      apply_stock['num_quotas_invested']
+                                                      apply_stock['value_or_cotas']
 
                 user_invest_apply_type_['value_invested'] = user_invest_apply_type_['value_invested'] + \
-                                                            (apply_stock['num_quotas_invested'])
-                avg_value_quota_invested_ = (
-                        user_invest_apply_stock['avg_value_quota_invested'] * user_invest_apply_stock[
-                    'num_quotas_invested'])
-                avg_value_quota_invested_ += (
-                        apply_stock['num_quotas_invested'] * apply_stock['avg_value_quota_invested'])
-                user_invest_apply_stock['num_quotas_invested'] += apply_stock['num_quotas_invested']
+                                                            apply_stock['value_or_cotas']
+                avg_value_quota_invested_ = (user_invest_apply_stock['avg_value_quota_invested'] *
+                                             user_invest_apply_stock['num_quotas_invested'])
+                avg_value_quota_invested_ += (apply_stock['value_or_cotas'] * apply_stock['tax_or_price'])
+                user_invest_apply_stock['num_quotas_invested'] += apply_stock['value_or_cotas']
                 user_invest_apply_stock['avg_value_quota_invested'] = avg_value_quota_invested_ / \
                                                                       user_invest_apply_stock['num_quotas_invested']
                 if user_invest_apply_stock['num_quotas_invested'] >= user_invest_apply_stock['num_quotas']:
@@ -1554,39 +1557,40 @@ class InvestmentHandler(Interceptor):
 
             else:
                 user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
-                                                      (user_invest_apply_stock['num_quotas_invested'] *
-                                                       user_invest_apply_stock['avg_value_quota_invested'])
+                                                      (apply_stock['value_or_cotas'] *
+                                                       apply_stock['tax_or_price'])
                 movement = {
                     "movement_type": 1,
                     "ticker": apply_stock['ticker'],
-                    "quantity": apply_stock['num_quotas_invested'],
-                    "price": apply_stock['avg_value_quota_invested'],
+                    "quantity": apply_stock['value_or_cotas'],
+                    "price": apply_stock['tax_or_price'],
                     "buy_date": datetime.now(timezone.utc).strftime("%Y-%m-%d")
                 }
-                user_invest_apply_stock['invested'] = 'S'
-                user_invest_apply_stock['num_quotas_invested'] = apply_stock['num_quotas_invested']
-                user_invest_apply_stock['avg_value_quota_invested'] = apply_stock['avg_value_quota_invested']
-
-                user_invest_apply['value_invested'] = user_invest_apply['value_invested'] + \
-                                                      (apply_stock['num_quotas_invested'] *
-                                                       apply_stock['avg_value_quota_invested'])
+                avg_value_quota_invested_ = (user_invest_apply_stock['avg_value_quota_invested'] *
+                                             user_invest_apply_stock['num_quotas_invested'])
+                avg_value_quota_invested_ += (apply_stock['value_or_cotas'] * apply_stock['tax_or_price'])
+                user_invest_apply_stock['num_quotas_invested'] += apply_stock['value_or_cotas']
+                user_invest_apply_stock['avg_value_quota_invested'] = avg_value_quota_invested_ / \
+                                                                      user_invest_apply_stock['num_quotas_invested']
 
                 user_invest_apply_type_['value_invested'] = user_invest_apply_type_['value_invested'] + \
-                                                            (apply_stock['num_quotas_invested'] *
-                                                             apply_stock['avg_value_quota_invested'])
+                                                            (apply_stock['value_or_cotas'] *
+                                                             apply_stock['tax_or_price'])
                 diff_ = user_invest_apply_stock['amount'] - (
                         user_invest_apply_stock['num_quotas_invested'] *
                         user_invest_apply_stock['avg_value_quota_invested'])
+                if diff_ < user_invest_apply_stock['avg_value_quota_invested']:
+                    user_invest_apply_stock['invested'] = 'S'
 
-                stock_rf_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
-                user_invest_apply_stock_rf = (
-                    http_repository.get_object_new("user_invest_apply_stock",
-                                                   {"investment_id": stock_rf_['id'],
-                                                    "user_invest_apply_id": user_invest_apply['id']},
-                                                   headers))
-                user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
-                user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
-                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)
+                    stock_rf_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
+                    user_invest_apply_stock_rf = (
+                        http_repository.get_object_new("user_invest_apply_stock",
+                                                       {"investment_id": stock_rf_['id'],
+                                                        "user_invest_apply_id": user_invest_apply['id']},
+                                                       headers))
+                    user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
+                    user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
+                    http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)
             apply_stock['invested'] = user_invest_apply_stock['invested']
 
             http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
@@ -1599,6 +1603,24 @@ class InvestmentHandler(Interceptor):
             if apply_stock['num_quotas_invested'] > 0 and apply_stock['avg_value_quota_invested'] > 0:
                 self.add_movement(movement, headers)
             return apply_stock
+        elif apply_stock['cancel'] == 'S' and user_invest_apply_stock is not None:
+            stock_rf_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
+            user_invest_apply = http_repository.get_object("user_invest_apply", ["id"],
+                                                           {"id": user_invest_apply_stock['user_invest_apply_id']},
+                                                           headers)
+            user_invest_apply_stock_rf = (
+                http_repository.get_object_new("user_invest_apply_stock",
+                                               {"investment_id": stock_rf_['id'],
+                                                "user_invest_apply_id": user_invest_apply['id']},
+                                               headers))
+            diff_ = user_invest_apply_stock['amount'] - (
+                        user_invest_apply_stock['num_quotas_invested'] *
+                        user_invest_apply_stock['avg_value_quota_invested'])
+            user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
+            user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
+            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)
+            user_invest_apply_stock['invested'] = 'S'
+            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
         else:
             print("Não foi salvo", apply_stock)
             added_ = {"status": "Cuidado", "message": "Registro sem informação de investimento"}
