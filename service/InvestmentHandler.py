@@ -1600,7 +1600,7 @@ class InvestmentHandler(Interceptor):
             added_ = {"status": "Sucesso", "message": "Aporte salvo com sucesso"}
             msg_ = "Será gerado o movimento de aplicação a seguir: " + str(movement)
             Utils.inform_to_client(added_, "Aporte", headers, msg_)
-            if apply_stock['num_quotas_invested'] > 0 and apply_stock['avg_value_quota_invested'] > 0:
+            if apply_stock['value_or_cotas'] > 0 and apply_stock['tax_or_price'] > 0:
                 self.add_movement(movement, headers)
             return apply_stock
         elif apply_stock['cancel'] == 'S' and user_invest_apply_stock is not None:
@@ -1619,7 +1619,7 @@ class InvestmentHandler(Interceptor):
             user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
             user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
             http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)
-            user_invest_apply_stock['invested'] = 'S'
+            user_invest_apply_stock['invested'] = 'C'
             http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
         else:
             print("Não foi salvo", apply_stock)
