@@ -1013,7 +1013,7 @@ class InvestmentHandler(Interceptor):
                 stock_['buy_sell_indicator'] = "sell"
                 stock_['recommendation'] = "Sell all - strategy"
 
-    def get_ticker_weight_ideal(self, ticker, headers=None):
+    def get_ticker_weight_ideal(self, ticker, headers=None, rank=20):
         try:
             select = f"select  us.ticker as ticker, \
                                piit.perc_ideal as perc_ideal_type, \
@@ -1031,14 +1031,14 @@ class InvestmentHandler(Interceptor):
                                                                          from user_recomendations ur  \
                                                                          where ur.user_id = uic.user_id  \
                                                                            and ur.investment_type_id = us.investment_type_id  \
-                                                                           and rank <= 20)) * piit.perc_ideal as perc_ideal \
+                                                                           and rank <= {rank})) * piit.perc_ideal as perc_ideal \
                         from user_invest_configs uic,  \
                              stocks us,  \
                              perc_ideal_investment_type piit  \
                         where uic.user_id = piit.user_id  \
                           and uic.investment_id = us.id  \
                           and us.investment_type_id = piit.investment_type_id  \
-                          and uic.user_id = 1  \
+                          and uic.user_id = :user_id  \
                           and us.ticker = '{ticker}'"
             info = http_repository.execute_select(select, headers);
             if len(info) > 0:
@@ -1266,8 +1266,7 @@ class InvestmentHandler(Interceptor):
     def investment_calc(self, data, headers=None):
         user_invest_apply = {'amount': data['amount']}
         http_repository.insert("user_invest_apply", user_invest_apply, headers)
-        user_ = http_repository.get_object("users", [], [], headers)
-        select = f"select * from user_invest_apply where user_id = {user_['id']}" \
+        select = f"select * from user_invest_apply where user_id = :user_id " \
                  f" order by apply_date desc limit 1"
         user_invest_apply = http_repository.execute_select(select, headers)[0]
         perc_ideal_investment_types = http_repository.get_all_objects("perc_ideal_investment_type", headers)
@@ -1275,13 +1274,14 @@ class InvestmentHandler(Interceptor):
         resume = http_repository.get_object("resume_values", [], {}, headers)
         total_amount = 0
         resto_total = 0
+        config_ = http_repository.get_object_new("configs", {}, headers)
         for investment_type in perc_ideal_investment_types:
             perc_ideal = investment_type['perc_ideal'] / 100
             type_gruped_values = http_repository.get_object("type_gruped_values", ["type_id"],
                                                             {"type_id": investment_type['investment_type_id']}, headers)
 
             amount_atu = type_gruped_values['total_value_atu']
-            amount = perc_ideal * resume['total_value_atu']
+            amount = perc_ideal * (resume['total_value_atu'] + user_invest_apply['amount'])
             amount = amount - amount_atu
             if amount > 100:
                 total_amount = total_amount + amount
@@ -1297,6 +1297,7 @@ class InvestmentHandler(Interceptor):
             investment_type_id = amount_type['investment_type_id']
             total_amount_stock = 0
             amount_stocks = []
+            user_recomendations = []
             if investment_type_id == 16:
                 amount = amount_type['amount']
                 stock_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
@@ -1305,12 +1306,26 @@ class InvestmentHandler(Interceptor):
                                       'user_invest_apply_id': user_invest_apply['id']})
 
             else:
-                select = f"select * from user_recomendations where user_id = {user_['id']} and investment_type_id = " \
-                         f"{amount_type['investment_type_id']} and rank <= 20 order by rank"
+                select = f"select * from user_recomendations \
+                            where user_id = :user_id \
+                                    and investment_type_id = {amount_type['investment_type_id']} \
+                                    and (rank <= {config_['rank']} \
+                                            or investment_id in (select us.investment_id from user_stocks us \
+                                                                where us.user_id = :user_id  \
+                                                                    and us.investment_type_id = \
+                                                                    {amount_type['investment_type_id']} \
+                                                                    and us.quantity >0)) \
+                         order by rank"
                 user_recomendations = http_repository.execute_select(select, headers)
                 for user_recomendation in user_recomendations:
-                    amount, stock_ = self.get_amount_value(user_recomendation, resume, headers)
-                    if amount > stock_['price']:
+                    amount, stock_ = self.get_amount_value(user_recomendation,
+                                                           resume,
+                                                           headers,
+                                                           config_['rank'],
+                                                           user_invest_apply['amount'])
+
+                    valid = self.get_is_valid_buy(stock_, headers)
+                    if (amount > stock_['price'] or stock_['investment_type_id'] == 100) and valid:
                         total_amount_stock = total_amount_stock + amount
                         amount_stocks.append({'investment_id': user_recomendation['investment_id'], 'amount': amount,
                                               'user_invest_apply_id': user_invest_apply['id']})
@@ -1320,10 +1335,15 @@ class InvestmentHandler(Interceptor):
                 stock_ = \
                     http_repository.get_object("stocks", ["id"], {"id": amount_stock['investment_id']}, headers)
                 amount = amount_stock['amount']
-                if amount > stock_['price']:
+                if amount > stock_['price'] or stock_['investment_type_id'] == 100:
                     amount_stock['amount'] = amount_type['amount'] * (amount / total_amount_stock)
-                    if amount_stock['amount'] > stock_['price']:
-                        num_quotas = int(amount_stock['amount'] / stock_['price'])
+                    if amount_stock['amount'] > amount:
+                        amount_stock['amount'] = amount
+                    if amount_stock['amount'] > stock_['price'] or stock_['investment_type_id'] == 100:
+                        if stock_['investment_type_id'] == 100:
+                            num_quotas = amount_stock['amount'] / stock_['price']
+                        else:
+                            num_quotas = int(amount_stock['amount'] / stock_['price'])
                         amount_stock['amount'] = num_quotas * stock_['price']
                         amount_stock['num_quotas'] = num_quotas
                         amount_ajsut = amount_ajsut + amount_stock['amount']
@@ -1331,10 +1351,16 @@ class InvestmentHandler(Interceptor):
             amount_stock_temp = 0
             if amount_ajsut > 0:
                 for ajsut in amount_stocks_ajust:
+                    amount_ = ajsut['amount']
                     stock_ = \
                         http_repository.get_object("stocks", ["id"], {"id": ajsut['investment_id']}, headers)
                     ajsut['amount'] = amount_type['amount'] * (ajsut['amount'] / amount_ajsut)
-                    num_quotas = int(ajsut['amount'] / stock_['price'])
+                    if ajsut['amount'] > amount_:
+                        ajsut['amount'] = amount_
+                    if stock_['investment_type_id'] == 100:
+                        num_quotas = ajsut['amount'] / stock_['price']
+                    else:
+                        num_quotas = int(ajsut['amount'] / stock_['price'])
                     ajsut['amount'] = num_quotas * stock_['price']
                     ajsut['num_quotas'] = num_quotas
                     amount_stock_temp = amount_stock_temp + ajsut['amount']
@@ -1342,31 +1368,42 @@ class InvestmentHandler(Interceptor):
             resto = amount_type['amount'] - amount_stock_temp
             continuar = True
             while continuar and resto > 0:
+                if user_recomendations.__len__() == 0:
+                    resto_temp = resto
                 for user_recomendation in user_recomendations:
                     resto_temp = resto
-                    if user_recomendation['rank'] <= 20:
-                        amount, stock_ = self.get_amount_value(user_recomendation, resume, headers)
-                        if resto > stock_['price'] and amount > 0:
+                    amount, stock_ = self.get_amount_value(user_recomendation,
+                                                           resume,
+                                                           headers,
+                                                           config_['rank'],
+                                                           user_invest_apply['amount'])
+                    valid = self.get_is_valid_buy(stock_, headers)
+                    if resto > stock_['price'] and amount > 0 and valid:
+                        user_invest_apply_stock = \
+                            http_repository.get_object("user_invest_apply_stock",
+                                                       ["investment_id", "user_invest_apply_id"],
+                                                       {"investment_id": user_recomendation['investment_id'],
+                                                        "user_invest_apply_id": user_invest_apply['id']}, headers)
+                        if user_invest_apply_stock is None:
+                            amount_stock = {'investment_id': user_recomendation['investment_id'],
+                                            'amount': 0,
+                                            'num_quotas': 0,
+                                            'user_invest_apply_id': user_invest_apply['id']}
+                            http_repository.insert("user_invest_apply_stock", amount_stock, headers)
                             user_invest_apply_stock = \
                                 http_repository.get_object("user_invest_apply_stock",
                                                            ["investment_id", "user_invest_apply_id"],
                                                            {"investment_id": user_recomendation['investment_id'],
                                                             "user_invest_apply_id": user_invest_apply['id']}, headers)
-                            if user_invest_apply_stock is None:
-                                amount_stock = {'investment_id': user_recomendation['investment_id'],
-                                                'amount': stock_['price'],
-                                                'num_quotas': 1,
-                                                'user_invest_apply_id': user_invest_apply['id']}
-                                http_repository.insert("user_invest_apply_stock", amount_stock, headers)
-                            else:
-                                user_invest_apply_stock['amount'] = user_invest_apply_stock['amount'] + stock_['price']
-                                user_invest_apply_stock['num_quotas'] = user_invest_apply_stock['num_quotas'] + 1
-                                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
-                                                       headers)
+                        if user_invest_apply_stock['amount'] < amount:
+                            user_invest_apply_stock['amount'] = user_invest_apply_stock['amount'] + stock_['price']
+                            user_invest_apply_stock['num_quotas'] = user_invest_apply_stock['num_quotas'] + 1
+                            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
+                                                   headers)
                             resto = resto - stock_['price']
                 if resto_temp == resto:
                     continuar = False
-                    print(resto)
+                    print(resto, amount_type['investment_type_id'])
                     resto_total = resto_total + resto
                     break
         if resto_total > 0:
@@ -1395,10 +1432,25 @@ class InvestmentHandler(Interceptor):
                                            ['user_invest_apply_id'], {'user_invest_apply_id': user_invest_apply['id']},
                                            headers)
 
-    def get_amount_value(self, user_recomendation, resume, headers):
-        perc_ideal = float(user_recomendation['ticker_weight_ideal'])
+    def get_is_valid_buy(self, stock_, headers):
+        tiker_prefix = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
+        select = (f"select * from user_stocks us, "
+                  f"stocks s "
+                  f"where s.id = us.investment_id  and quantity > 0 "
+                  f"and user_id = :user_id "
+                  f"and s.ticker <> '{stock_['ticker']}' "
+                  f"and s.ticker like '{tiker_prefix}%'")
+        user_stocks_ = http_repository.execute_select(select, headers)
+        valid = True
+        if user_stocks_.__len__() > 0:
+            valid = False
+        return valid
+
+    def get_amount_value(self, user_recomendation, resume, headers, rank=20, aport_value=0):
         stock_ = \
             http_repository.get_object("stocks", ["id"], {"id": user_recomendation['investment_id']}, headers)
+        perc_ideal = self.get_ticker_weight_ideal(stock_['ticker'], headers, rank)
+
         user_stock = \
             http_repository.get_object("user_stocks", ["investment_id"], user_recomendation, headers)
         if stock_['segment_custom'] is not None:
@@ -1412,11 +1464,18 @@ class InvestmentHandler(Interceptor):
             amount_atu = user_stock['quantity'] * stock_['price']
         else:
             amount_atu = 0
-        amount = perc_ideal * resume['total_value_atu']
+        amount = perc_ideal * (resume['total_value_atu'] + aport_value)
         amount = amount - amount_atu
         if user_segments_configs is not None:
-            if user_segments_configs['ideal_prec_max'] <= user_recomendation['segment_weight_in_all'] * 100:
-                amount = 0
+            perc_atu_segment = user_recomendation['segment_weight_in_all']
+            value_atu_segment = perc_atu_segment * resume['total_value_atu'] + amount
+            new_ideal_segment_value = user_segments_configs['ideal_prec_max'] * (
+                    resume['total_value_atu'] + aport_value)
+            if value_atu_segment > new_ideal_segment_value:
+                diff = new_ideal_segment_value - value_atu_segment
+                amount = amount - diff
+                if amount < 0:
+                    amount = 0
         return amount, stock_
 
     def get_sell_sugestions(self, user_invest_apply, headers=None):
@@ -1462,10 +1521,29 @@ class InvestmentHandler(Interceptor):
                                                            headers)
         stock_recomendations_ = []
         for stock_recomendation in stock_recomendations:
-            stock_ = http_repository.get_object("stocks", ["id"], {"id": stock_recomendation['investment_id']},
+            stock_ = http_repository.get_object("stocks", ["id"],
+                                                {"id": stock_recomendation['investment_id']},
                                                 headers)
-            renda_fixa = "S" if stock_['investment_type_id'] == 16 else "N";
-            cripto = "S" if stock_['investment_type_id'] == 100 else "N";
+            user_recomendation_ = http_repository.get_object_new("user_recomendations",
+                                                                 {"investment_id": stock_['id']},
+                                                                 headers)
+            if user_recomendation_ is None:
+                user_recomendation_ = {
+                    "rank": 1
+                }
+            user_stock_ = http_repository.get_object_new("user_stocks",
+                                                         {"investment_id": stock_['id']},
+                                                         headers)
+            if user_stock_ is None:
+                user_stock_ = {
+                    "quantity": 0
+                }
+
+            if user_recomendation_['rank'] > 10000:
+                user_recomendation_['rank'] = user_recomendation_['rank'] - 10000
+
+            renda_fixa = "S" if stock_['investment_type_id'] == 16 else "N"
+            cripto = "S" if stock_['investment_type_id'] == 100 else "N"
             stock_recomendation_ = {
                 "id": stock_recomendation['id'],
                 "ticker": stock_['ticker'],
@@ -1480,11 +1558,13 @@ class InvestmentHandler(Interceptor):
                 "cripto": cripto,
                 "investment_type_id": stock_['investment_type_id'],
                 "order": 0 if stock_recomendation['invested'] == 'N' else 1,
+                "rank": user_recomendation_['rank'],
+                "quantity": user_stock_['quantity']
             }
             stock_recomendations_.append(stock_recomendation_)
 
         stock_recomendations_ = sorted(stock_recomendations_,
-                                       key=lambda k: (k['order'], k['investment_type_id'], k['ticker']))
+                                       key=lambda k: (k['order'], k['investment_type_id'], k['rank']))
         type_invest_recomendations = http_repository.get_objects("user_invest_apply_type",
                                                                  ['user_invest_apply_id'],
                                                                  {'user_invest_apply_id': user_invest_apply['id']},
