@@ -391,13 +391,13 @@ class InvestmentHandler(Interceptor):
                     stock['ticker'] = ticker_
                     stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
                     stock_, investment_type, att_price_ = http_repository.get_values_by_ticker(stock_, False, headers,
-                                                                                               4 * 24)
+                                                                                               2)
                     if att_price_:
                         if investment_type['id'] == 100:
                             self.att_price_yahoo_us(stock_, headers)
-                        else:
-                            if investment_type['id'] != 16:
-                                self.att_price_yahoo(stock_, headers)
+                        # else:
+                        #     if investment_type['id'] != 16:
+                        #         self.att_price_yahoo(stock_, headers)
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \
