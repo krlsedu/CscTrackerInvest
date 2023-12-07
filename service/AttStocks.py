@@ -65,7 +65,7 @@ class AttStocks(Interceptor):
                 stock_ = investment_handler.get_stock(acao['ticker'], headers)
 
                 if full:
-                    stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+                    stock_, investment_type, _ = http_repository.get_values_by_ticker(stock_, True, headers)
                 else:
                     try:
                         stock_['price'] = acao['price']
@@ -115,7 +115,7 @@ class AttStocks(Interceptor):
                 company_ = company_.replace('/bdrs/', '')
                 print(f"Atualizando BDR: {company_} - {count_}/{len(bdrs)}")
                 stock_ = investment_handler.get_stock(company_, headers)
-                stock_, _ = http_repository.get_values_by_ticker(stock_, True, headers)
+                stock_, _, _ = http_repository.get_values_by_ticker(stock_, True, headers)
 
                 stock_ = investment_handler.att_dividend_info(stock_, headers)
 
@@ -132,7 +132,7 @@ class AttStocks(Interceptor):
             try:
                 company_ = bdr['ticker']
                 stock_ = investment_handler.get_stock(company_, headers)
-                stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+                stock_, investment_type, _ = http_repository.get_values_by_ticker(stock_, True, headers)
 
                 stock_ = investment_handler.att_dividend_info(stock_, headers)
 
@@ -158,7 +158,7 @@ class AttStocks(Interceptor):
             try:
                 stock_ = investment_handler.get_stock(fii['ticker'], headers)
                 if full:
-                    stock_, investment_type = http_repository.get_values_by_ticker(stock_, True, headers)
+                    stock_, investment_type, _ = http_repository.get_values_by_ticker(stock_, True, headers)
                 else:
                     try:
                         stock_['price'] = fii['price']
@@ -182,7 +182,7 @@ class AttStocks(Interceptor):
         fundos = http_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15}, headers)
         for fundo in fundos:
             try:
-                stock_, investment_type = http_repository.get_values_by_ticker(fundo, True, headers)
+                stock_, investment_type, _ = http_repository.get_values_by_ticker(fundo, True, headers)
 
                 stock_ = investment_handler.att_dividend_info(stock_, headers)
 

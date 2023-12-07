@@ -390,12 +390,13 @@ class InvestmentHandler(Interceptor):
                     ticker_ = investment_type['ticker']
                     stock['ticker'] = ticker_
                     stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
-                    stock_, investment_type = http_repository.get_values_by_ticker(stock_, False, headers)
-                    if investment_type['id'] == 100:
-                        self.att_price_yahoo_us(stock_, headers)
-                    else:
-                        if investment_type['id'] != 16:
-                            self.att_price_yahoo(stock_, headers)
+                    stock_, investment_type, att_price_ = http_repository.get_values_by_ticker(stock_, False, headers, 4 * 24)
+                    if att_price_:
+                        if investment_type['id'] == 100:
+                            self.att_price_yahoo_us(stock_, headers)
+                        else:
+                            if investment_type['id'] != 16:
+                                self.att_price_yahoo(stock_, headers)
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \
@@ -1694,8 +1695,8 @@ class InvestmentHandler(Interceptor):
                                                 "user_invest_apply_id": user_invest_apply['id']},
                                                headers))
             diff_ = user_invest_apply_stock['amount'] - (
-                        user_invest_apply_stock['num_quotas_invested'] *
-                        user_invest_apply_stock['avg_value_quota_invested'])
+                    user_invest_apply_stock['num_quotas_invested'] *
+                    user_invest_apply_stock['avg_value_quota_invested'])
             user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
             user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
             http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)

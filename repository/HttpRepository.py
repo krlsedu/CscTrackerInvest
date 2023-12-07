@@ -158,12 +158,12 @@ class HttpRepository(Interceptor):
         page = requests.get(f"{url}", headers=headers_sti)
         return page.text
 
-    def get_values_by_ticker(self, stock, force=False, headers=None):
+    def get_values_by_ticker(self, stock, force=False, headers=None, time_multiply=1):
         try:
             last_update = datetime.strptime(stock['last_update'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
             astimezone = datetime.now().astimezone(timezone.utc)
             time = astimezone.timestamp() * 1000 - last_update.timestamp() * 1000
-            queue = time > (1000 * 60 * 15) or time < 0
+            queue = time > (1000 * 60 * 15 * time_multiply) or time < 0
         except Exception as e:
             queue = True
         if queue or force:
@@ -184,7 +184,7 @@ class HttpRepository(Interceptor):
                 pass
         investment_type = requests.get(url_repository + 'single/investment_types',
                                        params={"id": stock['investment_type_id']}, headers=headers).json()
-        return stock, investment_type
+        return stock, investment_type, queue
 
     def get_soup(self, url, headers=None):
         text = self.get_page_text_by_url(url, headers)
