@@ -26,6 +26,18 @@ class AttStocks(Interceptor):
     def att_expres(self, headers=None):
         print("Atualizando indices")
         self.att_indices(headers)
+        print("Atualizando fiis express")
+        self.att_fiis(headers, False, True)
+        print("Atualizando acoes express")
+        self.att_acoes(headers, False, True)
+        print("Atualizando Criptos")
+        self.att_criptos(headers)
+        print("Atualizando fundos")
+        self.att_fundos(headers)
+        print("Atualizando bdrs")
+        self.att_brd_expres(headers)
+        print("Atualizando ranks")
+        investment_handler.att_stocks_ranks(headers)
         print("Atualizando fiis")
         self.att_fiis(headers)
         print("Atualizando acoes")
@@ -36,7 +48,6 @@ class AttStocks(Interceptor):
         self.att_fundos(headers)
         print("Atualizando bdrs")
         self.att_brd_expres(headers)
-        print("Atualizando ranks")
         investment_handler.att_stocks_ranks(headers)
         print("end att express")
 
@@ -55,8 +66,11 @@ class AttStocks(Interceptor):
         investment_handler.att_stocks_ranks(headers)
         print("end att full")
 
-    def att_acoes(self, headers=None, full=False):
-        acoes = load_acoes_info()
+    def att_acoes(self, headers=None, full=False, express=False):
+        if express:
+            acoes = self.load_my_invest(headers, 1)
+        else:
+            acoes = load_acoes_info()
         count_ = 0
         for acao in acoes:
             count_ += 1
@@ -149,8 +163,20 @@ class AttStocks(Interceptor):
             "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id)", headers)
         return bdrs
 
-    def att_fiis(self, headers, full=False):
-        fiis = load_fiis_info(headers)
+    def load_my_invest(self, headers, investment_type_id):
+        keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'name', 'investment_type_id']
+        ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
+        bdrs = http_repository.execute_select(
+            f"select {ks} from stocks "
+            f"where investment_type_id = {investment_type_id} "
+            "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id)", headers)
+        return bdrs
+
+    def att_fiis(self, headers, full=False, express=False):
+        if express:
+            fiis = self.load_my_invest(headers, 2)
+        else:
+            fiis = load_fiis_info(headers)
         count_ = 0
         for fii in fiis:
             count_ += 1
