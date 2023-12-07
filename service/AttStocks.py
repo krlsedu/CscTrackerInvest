@@ -160,7 +160,8 @@ class AttStocks(Interceptor):
         bdrs = http_repository.execute_select(
             "select * from stocks "
             "where investment_type_id = 4 "
-            "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id)", headers)
+            "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id and quantity > 0)",
+            headers)
         return bdrs
 
     def load_my_invest(self, headers, investment_type_id):
@@ -169,7 +170,8 @@ class AttStocks(Interceptor):
         bdrs = http_repository.execute_select(
             f"select {ks} from stocks "
             f"where investment_type_id = {investment_type_id} "
-            "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id)", headers)
+            "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id and quantity > 0)",
+            headers)
         return bdrs
 
     def att_fiis(self, headers, full=False, express=False):
