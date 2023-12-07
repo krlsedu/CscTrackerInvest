@@ -1,11 +1,12 @@
 import decimal
 import json
+from datetime import timedelta, datetime, timezone
+from statistics import stdev, mean
+
 import pandas
 import pandas as pd
 import pytz
 import requests
-from datetime import timedelta, datetime, timezone
-from statistics import stdev, mean
 
 from repository.HttpRepository import HttpRepository
 from service.DividendHandler import DividendHandler
@@ -390,13 +391,13 @@ class InvestmentHandler(Interceptor):
                     stock['ticker'] = ticker_
                     stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
                     stock_, investment_type, att_price_ = http_repository.get_values_by_ticker(stock_, False, headers,
-                                                                                               1)
-                    if investment_type['id'] == 100:
-                        self.att_price_yahoo_us(stock_, headers)
-                    #FIXME - Atualizar preço de ações yahooquery está ruim no momento
-                    # else:
-                        # if investment_type['id'] != 16 and att_price_:
-                        #     self.att_price_yahoo(stock_, headers)
+                                                                                               4 * 24)
+                    if att_price_:
+                        if investment_type['id'] == 100:
+                            self.att_price_yahoo_us(stock_, headers)
+                        else:
+                            if investment_type['id'] != 16:
+                                self.att_price_yahoo(stock_, headers)
 
                     if investment_type['id'] == 16:
                         stock_price = fixed_income_handler \
