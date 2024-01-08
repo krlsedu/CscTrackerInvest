@@ -1,31 +1,22 @@
 import decimal
 import json
+import logging
 from datetime import timedelta, datetime, timezone
 from statistics import stdev, mean
 
 import pandas
 import pandas as pd
 import pytz
-import requests
+from csctracker_py_core.models.emuns.config import Config
+from csctracker_py_core.repository.http_repository import HttpRepository
+from csctracker_py_core.repository.remote_repository import RemoteRepository
+from csctracker_py_core.utils.configs import Configs
+from csctracker_py_core.utils.utils import Utils
 
-from repository.HttpRepository import HttpRepository
-from service.DividendHandler import DividendHandler
-from service.FiiHandler import FiiHandler
-from service.FixedIncome import FixedIncome
-from service.Interceptor import Interceptor
-from service.RequestHandler import RequestHandler
-from service.StocksHandler import StocksHandler
-from service.Utils import Utils
-
-http_repository = HttpRepository()
-fii_handler = FiiHandler()
-stock_handler = StocksHandler()
-fixed_income_handler = FixedIncome()
-dividend_handler = DividendHandler()
-request_handler = RequestHandler()
-utils = Utils()
-
-url_bff = 'http://bff:8080/'
+from service.dividend_handler import DividendHandler
+from service.fii_handler import FiiHandler
+from service.fixed_income import FixedIncome
+from service.stocks_handler import StocksHandler
 
 
 class Encoder(json.JSONEncoder):
@@ -34,9 +25,22 @@ class Encoder(json.JSONEncoder):
             return float(obj)
 
 
-class InvestmentHandler(Interceptor):
-    def __init__(self):
-        super().__init__()
+class InvestmentHandler:
+    def __init__(self,
+                 fii_handler: FiiHandler,
+                 stock_handler: StocksHandler,
+                 fixed_income_handler: FixedIncome,
+                 dividend_handler: DividendHandler,
+                 remote_repository: RemoteRepository,
+                 http_repository: HttpRepository):
+        self.logger = logging.getLogger()
+        self.fii_handler = fii_handler
+        self.stock_handler = stock_handler
+        self.fixed_income_handler = fixed_income_handler
+        self.dividend_handler = dividend_handler
+        self.remote_repository = remote_repository
+        self.http_repository = http_repository
+        pass
 
     def add_movements(self, movements, headers=None):
         msgs = []
@@ -45,8 +49,9 @@ class InvestmentHandler(Interceptor):
         return msgs
 
     def add_movement(self, movement, headers=None):
-        movement = http_repository.add_user_id(movement, headers)
-        movement_type = http_repository.get_object("movement_types", ["id"], {"id": movement['movement_type']}, headers)
+        movement = self.remote_repository.add_user_id(movement, headers)
+        movement_type = self.remote_repository.get_object("movement_types", ["id"], {"id": movement['movement_type']},
+                                                          headers)
         coef = movement_type['coefficient']
         ticker_ = movement['ticker']
         if ticker_ is not None:
@@ -57,13 +62,13 @@ class InvestmentHandler(Interceptor):
             if fixed_icome != "S":
                 stock = self.get_stock(ticker_, headers)
             else:
-                stock = fixed_income_handler.get_stock(movement, headers)
+                stock = self.fixed_income_handler.get_stock(movement, headers)
                 movement['ticker'] = stock['ticker']
                 try:
                     movement['buy_date']
                 except:
                     movement['buy_date'] = datetime.now().strftime('%Y-%m-%d')
-                price = fixed_income_handler.get_stock_price(movement, headers)
+                price = self.fixed_income_handler.get_stock_price(movement, headers)
                 movement['price'] = float(price['price'])
                 movement['date'] = movement['buy_date']
                 try:
@@ -72,7 +77,7 @@ class InvestmentHandler(Interceptor):
                     filter_ = {
                         "investment_id": stock['id']
                     }
-                    user_stock = http_repository.get_object_new("user_stocks", filter_, headers)
+                    user_stock = self.remote_repository.get_object("user_stocks", data=filter_, headers=headers)
                     movement['quantity'] = float(user_stock['quantity'])
             try:
                 del movement['fixed_icome']
@@ -82,9 +87,9 @@ class InvestmentHandler(Interceptor):
             movement['investment_type_id'] = stock['investment_type_id']
             del movement['ticker']
         try:
-            if http_repository.exist_by_key("user_stocks", ["investment_id"], movement, headers):
+            if self.remote_repository.exist_by_key("user_stocks", ["investment_id"], movement, headers):
                 if movement_type['to_balance']:
-                    user_stock = http_repository.get_object("user_stocks", ["investment_id"], movement, headers)
+                    user_stock = self.remote_repository.get_object("user_stocks", ["investment_id"], movement, headers)
                     total_value = float(user_stock['quantity'] * user_stock['avg_price'])
 
                     total_value += movement['quantity'] * movement['price'] * float(coef)
@@ -107,12 +112,12 @@ class InvestmentHandler(Interceptor):
                         pass
                     if movement['movement_type'] == 2:
                         self.add_profit_loss(profit_loss_value, movement, headers)
-                    http_repository.update("user_stocks", ["user_id", "investment_id"], user_stock, headers)
+                    self.remote_repository.update("user_stocks", ["user_id", "investment_id"], user_stock, headers)
                 try:
                     del movement['tx_type']
                 except:
                     pass
-                http_repository.insert("user_stocks_movements", movement, headers)
+                self.remote_repository.insert("user_stocks_movements", movement, headers)
             else:
                 if movement_type['to_balance']:
                     stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
@@ -123,26 +128,26 @@ class InvestmentHandler(Interceptor):
                         del movement['venc_date']
                     except:
                         pass
-                    http_repository.insert("user_stocks", stock, headers)
+                    self.remote_repository.insert("user_stocks", stock, headers)
                 try:
                     del movement['tx_type']
                 except:
                     pass
-                http_repository.insert("user_stocks_movements", movement, headers)
+                self.remote_repository.insert("user_stocks_movements", movement, headers)
             try:
                 msg_ = "Movimento adicionado com sucesso: " + str(movement)
-                request_handler.inform_to_client(movement, "Movimento", headers, msg_)
+                Utils.inform_to_client(movement, "Movimento", headers, msg_)
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 pass
             return {"status": "success", "message": "Movement added"}
         except Exception as e:
-            print(e)
+            self.logger.exception(e)
             try:
                 msg_ = "Erro ao adicionar movimento: " + str(e) + " - " + str(movement)
-                request_handler.inform_to_client(movement, "MovimentoErro", headers, msg_)
+                Utils.inform_to_client(movement, "MovimentoErro", headers, msg_)
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 pass
             return {"status": "error", "message": e}
 
@@ -158,16 +163,16 @@ class InvestmentHandler(Interceptor):
             "quantity": movement['quantity'],
             "date_sell": date
         }
-        http_repository.insert("profit_loss", profit_loss, headers)
+        self.remote_repository.insert("profit_loss", profit_loss, headers)
 
     def get_stock(self, ticker_, headers=None):
         ticker_ = ticker_.upper()
-        stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
+        stock = self.remote_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
         try:
             stock['id']
         except Exception as e:
             ticker_ = self.add_stock(ticker_, headers)
-            stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
+            stock = self.remote_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
             self.add_stock_price(stock, headers)
         return stock
 
@@ -181,7 +186,7 @@ class InvestmentHandler(Interceptor):
 
         data_ant = datetime.now().astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         try:
-            price_ant = stock_handler.get_price(stock['id'], data_ant, headers)
+            price_ant = self.stock_handler.get_price(stock['id'], data_ant, headers)
         except:
             price_ant = None
         if price_ant is not None:
@@ -193,7 +198,7 @@ class InvestmentHandler(Interceptor):
     def add_price(self, price, headers=None):
         try:
             if price['price'] is not None:
-                http_repository.insert("stocks_prices", price, headers)
+                self.remote_repository.insert("stocks_prices", price, headers)
                 try:
                     try:
                         date_value_ = datetime.strptime(price['date_value'], '%Y-%m-%d').strftime('%Y-%m-%d')
@@ -203,21 +208,24 @@ class InvestmentHandler(Interceptor):
                         "investment_id": price['investment_id'],
                         "date_value": date_value_
                     }
-                    price_agg = http_repository.get_object_new("stocks_prices_agregated", _filter, headers)
+                    price_agg = self.remote_repository.get_object("stocks_prices_agregated",
+                                                                  data=_filter,
+                                                                  headers=headers)
                     if price_agg is not None and price_agg['id'] is not None:
                         price_agg['price'] = price['price']
-                        http_repository.update("stocks_prices_agregated", ["id"], price_agg, headers)
+                        self.remote_repository.update("stocks_prices_agregated", ["id"], price_agg, headers)
                     else:
                         price['date_value'] = date_value_
-                        http_repository.insert("stocks_prices_agregated", price, headers)
+                        self.remote_repository.insert("stocks_prices_agregated", price, headers)
                 except Exception as e:
-                    print("add_price - investmentHandler -> ", price, e)
+                    self.logger.info(f"add_price - investmentHandler -> {price}")
+                    self.logger.exception(e)
                     pass
         except Exception as e:
-            print(e)
+            self.logger.exception(e)
 
     def add_stock(self, ticker_, headers=None):
-        stock = http_repository.get_firt_stock_type(ticker_, headers)
+        stock = self.http_repository.get_firt_stock_type(ticker_, headers)
         type_ = stock['type']
         code_ = stock['code']
         if type_ == 15:
@@ -228,7 +236,7 @@ class InvestmentHandler(Interceptor):
             'investment_type_id': type_,
             'url_infos': stock['url']
         }
-        http_repository.insert("stocks", investment_tp, headers)
+        self.remote_repository.insert("stocks", investment_tp, headers)
         return investment_tp['ticker']
 
     def get_stocks(self, args=None, headers=None):
@@ -237,13 +245,15 @@ class InvestmentHandler(Interceptor):
         for key in args:
             filters.append(key)
             values[key] = args[key]
-        return http_repository.get_objects("user_stocks", filters, values, headers)
+        return self.remote_repository.get_objects("user_stocks", filters, values, headers)
 
     def att_prices_yahoo(self, stock_, headers, period, interval):
         try:
-            prices = requests.get(url_bff +
-                                  'yahoofinance/prices-br/' + stock_['ticker'] + '/' + period + '/' + interval,
-                                  headers=headers).json()
+            url_bff_ = self.get_url_bff()
+            prices = self.http_repository.get(
+                f"{url_bff_}yahoofinance/prices-br/{stock_['ticker']}/{period}/{interval}",
+                headers=headers
+            ).json()
             for price in prices['data']:
                 try:
                     stock_['price'] = price['open']
@@ -253,23 +263,31 @@ class InvestmentHandler(Interceptor):
                                          .replace(tzinfo=timezone.utc)
                                          .strftime('%Y-%m-%d %H:%M:%S'))
                 except Exception as e:
-                    print(e)
+                    self.logger.exception(e)
                     pass
         except Exception as e:
-            print(e)
+            self.logger.exception(e)
             pass
+
+    def get_url_bff(self):
+        url_bff_ = Configs.get_env_variable(Config.URL_BFF)
+        if url_bff_[-1] != '/':
+            url_bff_ += '/'
+        return url_bff_
 
     def att_price_yahoo(self, stock_, headers, date=None):
         try:
-            prices = requests.get(url_bff + 'yahoofinance/price-br/' + stock_['ticker'], headers=headers) \
-                .json()
+            prices = self.http_repository.get(
+                self.get_url_bff() + 'yahoofinance/price-br/' + stock_['ticker'],
+                headers=headers
+            ).json()
             stock_['price'] = prices['price']['regularMarketPrice']
             self.add_stock_price(stock_, headers, date)
-            http_repository.update("stocks", ["ticker"], stock_, headers)
+            self.remote_repository.update("stocks", ["ticker"], stock_, headers)
         except:
             try:
                 self.add_stock_price(stock_, headers, date)
-                http_repository.update("stocks", ["ticker"], stock_, headers)
+                self.remote_repository.update("stocks", ["ticker"], stock_, headers)
             except:
                 pass
             pass
@@ -277,42 +295,48 @@ class InvestmentHandler(Interceptor):
 
     def att_price_yahoo_us(self, stock_, headers, date=None):
         try:
-            prices = requests.get(url_bff + 'yahoofinance/price/' + stock_['ticker'], headers=headers) \
-                .json()
+            prices = self.http_repository.get(
+                self.get_url_bff() + 'yahoofinance/price/' + stock_['ticker'],
+                headers=headers
+            ).json()
             price_ = prices['price']['regularMarketPrice']
-            prices = requests.get(url_bff + 'yahoofinance/price/BRL=X', headers=headers) \
-                .json()
+            prices = self.http_repository.get(
+                self.get_url_bff() + 'yahoofinance/price/BRL=X',
+                headers=headers
+            ).json()
             price_ = price_ * prices['price']['regularMarketPrice']
             stock_['price'] = price_
             self.add_stock_price(stock_, headers, date)
-            http_repository.update("stocks", ["ticker"], stock_, headers)
+            self.remote_repository.update("stocks", ["ticker"], stock_, headers)
         except:
             try:
                 self.add_stock_price(stock_, headers, date)
-                http_repository.update("stocks", ["ticker"], stock_, headers)
+                self.remote_repository.update("stocks", ["ticker"], stock_, headers)
             except:
                 pass
             pass
 
     def att_info_yahoo(self, stock_, headers, date=None):
         try:
-            prices = requests.get(url_bff + 'yahoofinance/info-br/' + stock_['ticker'], headers=headers) \
-                .json()
+            prices = self.http_repository.get(
+                self.get_url_bff() + 'yahoofinance/info-br/' + stock_['ticker'],
+                headers=headers
+            ).json()
 
             try:
                 stock_['price'] = prices['price']['regularMarketPrice']
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 pass
             try:
                 stock_['ebitda'] = prices['financial_data']['ebitda']
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 stock_['ebitda'] = 0
             try:
                 stock_['ev'] = prices['key_stats']['enterpriseValue']
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 stock_['ev'] = 0
 
             if stock_['ev'] is None:
@@ -326,14 +350,14 @@ class InvestmentHandler(Interceptor):
             if stock_['ev_ebit'] is None:
                 stock_['ev_ebit'] = 0
             self.add_stock_price(stock_, headers, date)
-            http_repository.update("stocks", ["ticker"], stock_, headers)
+            self.remote_repository.update("stocks", ["ticker"], stock_, headers)
         except Exception as e:
-            print(e)
+            self.logger.exception(e)
             try:
                 self.add_stock_price(stock_, headers, date)
-                http_repository.update("stocks", ["ticker"], stock_, headers)
+                self.remote_repository.update("stocks", ["ticker"], stock_, headers)
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 pass
             pass
 
@@ -344,7 +368,7 @@ class InvestmentHandler(Interceptor):
                  f"where st.id = m.investment_id " \
                  f"and st.ticker = '{stock['ticker']}' " \
                  f"and date_with >= now() + interval '-1 year' order by date_with desc"
-        values = http_repository.execute_select(select, headers)
+        values = self.remote_repository.execute_select(select, headers)
         if values.__len__() > 0:
             vs = []
             for value in values:
@@ -364,12 +388,12 @@ class InvestmentHandler(Interceptor):
             else:
                 stock["dy"] = 0
             stock["last_dividend"] = float(values[0]['value'])
-            http_repository.update("stocks", ["ticker"], stock, headers)
+            self.remote_repository.update("stocks", ["ticker"], stock, headers)
         else:
             stock["dy"] = 0
             stock["last_dividend"] = 0
             stock["desv_dy"] = 10000000
-            http_repository.update("stocks", ["ticker"], stock, headers)
+            self.remote_repository.update("stocks", ["ticker"], stock, headers)
         return stock
 
     def get_stocks_consolidated(self, args=None, headers=None):
@@ -380,18 +404,22 @@ class InvestmentHandler(Interceptor):
             count = 0
             for stock in stocks:
                 count += 1
-                print(
-                    "Atualizando " + str(count) + " de " + str(stocks.__len__()) + " - " + str(stock['investment_id']))
+                msg__ = "Atualizando " + str(count) + " de " + str(stocks.__len__()) + " - " + str(
+                    stock['investment_id'])
+                self.logger.info(msg__)
                 if stock['quantity'] > 0:
                     segment = {}
                     stock_consolidated = {}
-                    investment_type = http_repository.get_object("stocks", ["id"], {"id": stock['investment_id']},
-                                                                 headers)
+                    investment_type = self.remote_repository.get_object("stocks", ["id"],
+                                                                        {"id": stock['investment_id']},
+                                                                        headers)
                     ticker_ = investment_type['ticker']
                     stock['ticker'] = ticker_
-                    stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
-                    stock_, investment_type, att_price_ = http_repository.get_values_by_ticker(stock_, False, headers,
-                                                                                               2)
+                    stock_ = self.remote_repository.get_object("stocks", ["ticker"], stock, headers)
+                    stock_, investment_type, att_price_ = self.http_repository.get_values_by_ticker(stock_,
+                                                                                                    False,
+                                                                                                    headers,
+                                                                                                    2)
                     if att_price_:
                         if investment_type['id'] == 100:
                             self.att_price_yahoo_us(stock_, headers)
@@ -400,14 +428,17 @@ class InvestmentHandler(Interceptor):
                         #         self.att_price_yahoo(stock_, headers)
 
                     if investment_type['id'] == 16:
-                        stock_price = fixed_income_handler \
-                            .get_stock_price_by_ticker(ticker_, headers, (datetime.now()).strftime('%Y-%m-%d'))
+                        stock_price = self.fixed_income_handler.get_stock_price_by_ticker(
+                            ticker_,
+                            headers,
+                            (datetime.now()).strftime('%Y-%m-%d')
+                        )
                         stock_['price'] = stock_price['price']
                     stock_ = self.att_dividend_info(stock_, headers)
                     data_ant = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d 23:59:59')
-                    price_ant = stock_handler.get_price(stock_['id'], data_ant, headers)
+                    price_ant = self.stock_handler.get_price(stock_['id'], data_ant, headers)
                     data_atu = datetime.now().strftime('%Y-%m-%d 23:59:59')
-                    price_atu = stock_handler.get_price(stock_['id'], data_atu, headers)
+                    price_atu = self.stock_handler.get_price(stock_['id'], data_atu, headers)
 
                     segment['type'] = investment_type['name']
                     segment['type_id'] = investment_type['id']
@@ -520,17 +551,17 @@ class InvestmentHandler(Interceptor):
             return []
 
     def get_sotcks_infos(self, args=None, headers=None):
-        stocks_br = stock_handler.get_stocks(1, headers, args)
-        bdrs = stock_handler.get_stocks(4, headers, args)
-        fiis = fii_handler.get_fiis(headers, args)
-        founds = stock_handler.get_founds(15, headers)
-        fix_income = stock_handler.get_founds(16, headers)
-        criptos = stock_handler.get_founds(100, headers)
+        stocks_br = self.stock_handler.get_stocks(1, headers, args)
+        bdrs = self.stock_handler.get_stocks(4, headers, args)
+        fiis = self.fii_handler.get_fiis(headers, args)
+        founds = self.stock_handler.get_founds(15, headers)
+        fix_income = self.stock_handler.get_founds(16, headers)
+        criptos = self.stock_handler.get_founds(100, headers)
         return stocks_br, bdrs, fiis, founds, fix_income, criptos
 
     def buy_sell_indication(self, args=None, headers=None):
         infos = self.get_stocks_consolidated(args, headers)
-        infos['stocks_names'] = stock_handler.get_stocks_basic(headers)
+        infos['stocks_names'] = self.stock_handler.get_stocks_basic(headers)
 
         stocks = infos['stocks']
         type_grouped = infos['type_grouped']
@@ -599,9 +630,9 @@ class InvestmentHandler(Interceptor):
 
     def save_recomendations_info(self, info, headers=None):
         try:
-            _ = http_repository.get_all_objects("user_recomendations", headers)
+            _ = self.remote_repository.get_all_objects("user_recomendations", headers)
             if len(_) > 0:
-                http_repository.delete_all("user_recomendations", headers)
+                self.remote_repository.delete_all("user_recomendations", headers)
             self.save_recomendations(info['stocks_br'], headers)
             self.save_recomendations(info['bdrs'], headers)
             self.save_recomendations(info['fiis'], headers)
@@ -609,13 +640,13 @@ class InvestmentHandler(Interceptor):
             self.save_recomendations(info['fix_income'], headers)
             self.save_recomendations(info['criptos'], headers)
         except Exception as e:
-            print(e)
+            self.logger.exception(e)
             pass
 
     def save_recomendations(self, recomendations, headers=None):
         for recomendation in recomendations:
             recomendation["investment_id"] = \
-                http_repository.get_object("stocks", ["ticker"], recomendation, headers)['id']
+                self.remote_repository.get_object("stocks", ["ticker"], recomendation, headers)['id']
             try:
                 del recomendation['name']
             except:
@@ -633,44 +664,44 @@ class InvestmentHandler(Interceptor):
             except:
                 pass
             try:
-                http_repository.insert("user_recomendations", recomendation, headers)
+                self.remote_repository.insert("user_recomendations", recomendation, headers)
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 pass
 
     def save_type_gruped(self, infos, headers=None):
         type_grouped = infos['type_grouped']
         for type_ in type_grouped:
             type_['id'] = type_['type_id']
-            http_repository.update("type_gruped_values", ["id"], type_, headers)
+            self.remote_repository.update("type_gruped_values", ["id"], type_, headers)
 
     def save_resume(self, infos, headers=None):
         resume = infos['resume']
         resume['id'] = 9999
         resume['type_id'] = 9999
-        http_repository.update("resume_values", ["id"], resume, headers)
+        self.remote_repository.update("resume_values", ["id"], resume, headers)
 
     def save_infos(self, infos, headers=None):
         resume = None
         try:
-            resume = http_repository.get_object("investments_calc_resume", [], {}, headers)
+            resume = self.remote_repository.get_object("investments_calc_resume", [], {}, headers)
         except:
             pass
         j_infos = json.dumps(infos, cls=Encoder, ensure_ascii=False)
         if resume is None:
             resume = {'resume': j_infos}
-            http_repository.insert("investments_calc_resume", resume, headers)
+            self.remote_repository.insert("investments_calc_resume", resume, headers)
         else:
             resume['resume'] = j_infos
-            http_repository.update("investments_calc_resume", ["id"], resume, headers)
+            self.remote_repository.update("investments_calc_resume", ["id"], resume, headers)
 
     def add_dividend_info(self, stock, headers=None):
-        stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
+        stock_ = self.remote_repository.get_object("stocks", ["ticker"], stock, headers)
         arg = {
             'investment_id': stock_['id'],
             'active': 'S'
         }
-        dividends = dividend_handler.get_dividends(arg, headers)
+        dividends = self.dividend_handler.get_dividends(arg, headers)
         stock['dividends'] = 0
         for dividend in dividends:
             stock['dividends'] += float(dividend['quantity'] * dividend['value_per_quote'])
@@ -679,7 +710,7 @@ class InvestmentHandler(Interceptor):
 
     def add_total_dividends_info(self, infos, headers=None):
         arg = {}
-        dividends = dividend_handler.get_dividends(arg, headers)
+        dividends = self.dividend_handler.get_dividends(arg, headers)
         infos['resume']['total_dividends'] = 0
         for dividend in dividends:
             infos['resume']['total_dividends'] += float(dividend['quantity'] * dividend['value_per_quote'])
@@ -687,8 +718,7 @@ class InvestmentHandler(Interceptor):
         return infos
 
     def add_total_profit_loss_info(self, infos, headers=None, args=None):
-        filters, values = http_repository.get_filters(args, headers)
-        profit_loss = http_repository.get_objects("profit_loss", filters, values, headers)
+        profit_loss = self.remote_repository.get_objects("profit_loss", data=args, headers=headers)
         infos['resume']['profits'] = 0
         infos['resume']['losses'] = 0
         for pl in profit_loss:
@@ -700,11 +730,13 @@ class InvestmentHandler(Interceptor):
 
     def add_total_daily_gain(self, infos, headers=None):
         filter_ = {
-            'user_id': http_repository.get_user(headers)['id'],
+            'user_id': self.remote_repository.get_user(headers)['id'],
             'movement_type': 1
         }
-        movements = http_repository.get_objects("user_stocks_movements",
-                                                ["user_id", "movement_type"], filter_, headers)
+        movements = self.remote_repository.get_objects("user_stocks_movements",
+                                                       ["user_id", "movement_type"],
+                                                       filter_,
+                                                       headers)
         days = 0
         quantity = 0
         for movement in movements:
@@ -713,8 +745,10 @@ class InvestmentHandler(Interceptor):
             days += delta.days * (movement['quantity'] * movement['price'])
             quantity += (movement['quantity'] * movement['price'])
         filter_['movement_type'] = 2
-        movements = http_repository.get_objects("user_stocks_movements",
-                                                ["user_id", "movement_type"], filter_, headers)
+        movements = self.remote_repository.get_objects("user_stocks_movements",
+                                                       ["user_id", "movement_type"],
+                                                       filter_,
+                                                       headers)
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
             delta = datetime.now().astimezone(tz=timezone.utc) - date_
@@ -747,25 +781,25 @@ class InvestmentHandler(Interceptor):
         return x ** (1 / float(n))
 
     def add_daily_gain(self, stock, headers=None):
-        stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
+        stock_ = self.remote_repository.get_object("stocks", ["ticker"], stock, headers)
         filter_ = {
             'investment_id': stock_['id'],
-            'user_id': http_repository.get_user(headers)['id'],
+            'user_id': self.remote_repository.get_user(headers)['id'],
             'movement_type': 1,
             'active': 'S'
         }
-        movements = http_repository.get_objects("user_stocks_movements",
-                                                ["investment_id", "user_id", "movement_type", "active"],
-                                                filter_, headers)
+        movements = self.remote_repository.get_objects("user_stocks_movements",
+                                                       ["investment_id", "user_id", "movement_type", "active"],
+                                                       filter_, headers)
         days = 0
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
             delta = datetime.now().astimezone(tz=timezone.utc) - date_
             days += delta.days * movement['quantity']
         filter_['movement_type'] = 2
-        movements = http_repository.get_objects("user_stocks_movements",
-                                                ["investment_id", "user_id", "movement_type", "active"],
-                                                filter_, headers)
+        movements = self.remote_repository.get_objects("user_stocks_movements",
+                                                       ["investment_id", "user_id", "movement_type", "active"],
+                                                       filter_, headers)
         for movement in movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
             delta = datetime.now().astimezone(tz=timezone.utc) - date_
@@ -850,16 +884,20 @@ class InvestmentHandler(Interceptor):
             return new_val
 
     def check_notify_stock(self, stock, headers=None):
-        stock_ = http_repository.get_object("stocks", ["ticker"], stock, headers)
+        stock_ = self.remote_repository.get_object("stocks", ["ticker"], stock, headers)
         filter_ = {
             'investment_id': stock_['id'],
         }
-        stock_notification_config = http_repository \
-            .get_object("stock_notification_config", ["investment_id"], filter_, headers)
+        stock_notification_config = self.remote_repository.get_object(
+            "stock_notification_config",
+            ["investment_id"],
+            filter_,
+            headers
+        )
         if stock_notification_config is None:
             return None
         else:
-            if not (utils.work_day() and utils.work_time()):
+            if not (Utils.work_day() and Utils.work_time()):
                 return stock_notification_config
             if stock_notification_config['monthly_gain_target'] is not None and \
                     stock_notification_config['monthly_gain_target'] / 100 < stock['monthly_gain'] and \
@@ -867,22 +905,42 @@ class InvestmentHandler(Interceptor):
                 message = 'A ação ' + stock['ticker'] + ' atingiu o ganho mensal esperado de ' + \
                           str(stock_notification_config['monthly_gain_target']) + '%. Ganho atual: ' + \
                           str(stock['monthly_gain'] * 100) + '%'
-                request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
-                                                 "Buy Sell Recommendation")
+                Utils.inform_to_client(
+                    stock,
+                    "buySellRecommendation",
+                    headers,
+                    message,
+                    "Buy Sell Recommendation"
+                )
                 stock_notification_config['last_notification'] = datetime \
                     .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
-                http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
+                self.remote_repository.update(
+                    "stock_notification_config",
+                    ["id"],
+                    stock_notification_config,
+                    headers
+                )
             elif stock_notification_config['value_target'] is not None and \
                     stock_notification_config['value_target'] < stock['price_atu'] and \
                     self.check_time_to_notfy(stock_notification_config, headers):
                 message = 'A ação ' + stock['ticker'] + ' atingiu o valor desejado de ' + \
                           str(stock_notification_config['value_target']) + '. Valor atual: ' + \
                           str(stock['price_atu'])
-                request_handler.inform_to_client(stock, "buySellRecommendation", headers, message,
-                                                 "Buy Sell Recommendation")
+                Utils.inform_to_client(
+                    stock,
+                    "buySellRecommendation",
+                    headers,
+                    message,
+                    "Buy Sell Recommendation"
+                )
                 stock_notification_config['last_notification'] = datetime \
                     .strftime(datetime.now(pytz.utc), '%Y-%m-%d %H:%M:%S.%f')
-                http_repository.update("stock_notification_config", ["id"], stock_notification_config, headers)
+                self.remote_repository.update(
+                    "stock_notification_config",
+                    ["id"],
+                    stock_notification_config,
+                    headers
+                )
             return stock_notification_config
 
     def check_time_to_notfy(self, stock_notification_config, headers=None):
@@ -902,7 +960,7 @@ class InvestmentHandler(Interceptor):
             elif stock_notification_config['frequency_unit'] == 'week':
                 return time > stock_notification_config['frequency_value'] * 604800000
         except Exception as e:
-            print(e)
+            self.logger.exception(e)
             return True
 
     def set_buy_sell_info(self, stock_, stock_ref, types_sum, stocks, headers=None, notify=False):
@@ -914,8 +972,12 @@ class InvestmentHandler(Interceptor):
         filter_ = {
             'investment_type_id': type_ivest_id_
         }
-        perc_type_ideal_obj = http_repository.get_object("perc_ideal_investment_type", ["investment_type_id"],
-                                                         filter_, headers)
+        perc_type_ideal_obj = self.remote_repository.get_object(
+            "perc_ideal_investment_type",
+            ["investment_type_id"],
+            filter_,
+            headers
+        )
         perc_type_ideal = perc_type_ideal_obj['perc_ideal'] / 100
         if type_ivest_id_ == 16:
             total_invested = types_sum[0]
@@ -1042,13 +1104,13 @@ class InvestmentHandler(Interceptor):
                           and us.investment_type_id = piit.investment_type_id  \
                           and uic.user_id = :user_id  \
                           and us.ticker = '{ticker}'"
-            info = http_repository.execute_select(select, headers);
+            info = self.remote_repository.execute_select(select, headers)
             if len(info) > 0:
                 return info[0]['perc_ideal'] / 100
             else:
                 return 0
         except Exception as e:
-            print(e)
+            self.logger.exception(e)
             return 0
 
     def get_stock_ref(self, bdrs, fiis, stock, stock_ref, stocks_br, founds, fix_income, criptos):
@@ -1090,13 +1152,6 @@ class InvestmentHandler(Interceptor):
         novo_valor = total * perc_ideal
         sell = valor_atu - novo_valor
         return sell
-        # val_atu = novo_valor
-        # while sell > 0.01:
-        #     novo_total = novo_total - (val_atu - novo_total * (perc_ideal / 100))
-        #     novo_valor = novo_total * (perc_ideal / 100)
-        #     sell = val_atu - novo_valor
-        #     val_atu = novo_valor
-        # return valor_atu - novo_valor
 
     def get_tot_to_buy(self, total, perc_ideal, perc_atu):
         v_atu = total * perc_atu
@@ -1104,14 +1159,6 @@ class InvestmentHandler(Interceptor):
         new_val = total * perc_ideal
         buy = new_val - v_atu
         return buy
-        # val_atu = new_val
-        # while buy > 0.01:
-        #     new_tot = new_tot + (new_tot * (perc_ideal / 100) - val_atu)
-        #     new_val = new_tot * (perc_ideal / 100)
-        #     buy = new_val - val_atu
-        #     val_atu = new_val
-        #
-        # return new_val - v_atu
 
     def to_brl(self, value):
         a = '{:,.2f}'.format(float(value))
@@ -1151,16 +1198,16 @@ class InvestmentHandler(Interceptor):
         return json.loads(df.to_json(orient="records"))
 
     def att_stocks_ranks(self, headers=None):
-        stocks = http_repository.get_objects("stocks", [], {}, headers)
+        stocks = self.remote_repository.get_objects("stocks", [], {}, headers)
         stocks = self.calc_ranks(stocks)
-        http_repository.update("stocks", [], stocks, headers)
+        self.remote_repository.update("stocks", [], stocks, headers)
 
     def att_stock_price_new(self, headers, daily, stock, stock_, type, price_type="4", reimport=False, data_=None):
         if stock_['prices_imported'] == 'N' or daily or reimport:
             if type == 'fundo' and not daily or type == 'fundo' and reimport:
                 company_ = stock_['url_infos']
                 company_ = company_.replace('/fundos-de-investimento/', '')
-                infos = http_repository.get_prices_fundos(company_, price_type == "1")
+                infos = self.http_repository.get_prices_fundos(company_, price_type == "1")
                 datas = infos['data']['chart']['category']
                 values = infos['data']['chart']['series']['fundo']
                 for i in range(len(datas)):
@@ -1175,7 +1222,7 @@ class InvestmentHandler(Interceptor):
                         self.add_stock_price(stock_, headers, data)
                 pass
             else:
-                infos = http_repository.get_prices(stock_['ticker'], type, daily, price_type)
+                infos = self.http_repository.get_prices(stock_['ticker'], type, daily, price_type)
                 for info in infos:
                     prices = info['prices']
                     for price in prices:
@@ -1196,8 +1243,8 @@ class InvestmentHandler(Interceptor):
                                 self.add_stock_price(stock_, headers, data)
             stock_['prices_imported'] = 'S'
             stock_['price'] = stock['price']
-            http_repository.update("stocks", ["ticker"], stock_, headers)
-        print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+            self.remote_repository.update("stocks", ["ticker"], stock_, headers)
+        self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
 
     def investment_facts(self, facts, headers=None):
         user_invest_configs = {}
@@ -1205,31 +1252,31 @@ class InvestmentHandler(Interceptor):
             fact_ = None
             try:
                 fact['id']
-                fact_ = http_repository.get_object("user_invest_facts", ["id"], fact, headers)
+                fact_ = self.remote_repository.get_object("user_invest_facts", ["id"], fact, headers)
             except KeyError:
                 fact['id'] = None
 
             filter = {
                 "ticker": fact['ticker'],
             }
-            stock_ = http_repository.get_object("stocks", ["ticker"], filter, headers)
+            stock_ = self.remote_repository.get_object("stocks", ["ticker"], filter, headers)
             fact['investment_id'] = stock_['id']
             del fact['ticker']
             if fact['id'] is None:
-                http_repository.insert("user_invest_facts", fact, headers)
+                self.remote_repository.insert("user_invest_facts", fact, headers)
             else:
-                http_repository.update("user_invest_facts", ["id"], fact, headers)
+                self.remote_repository.update("user_invest_facts", ["id"], fact, headers)
             filter = {
                 "investment_id": fact['investment_id'],
             }
-            user_invest_configs = http_repository.get_object("user_invest_configs", ["investment_id"],
-                                                             filter, headers)
+            user_invest_configs = self.remote_repository.get_object("user_invest_configs", ["investment_id"],
+                                                                    filter, headers)
             if user_invest_configs is None:
                 user_invest_configs = {
                     "investment_id": fact['investment_id'],
                     "coef": 1
                 }
-                http_repository.insert("user_invest_configs", user_invest_configs, headers)
+                self.remote_repository.insert("user_invest_configs", user_invest_configs, headers)
 
             weight = fact['weight']
             if weight is None:
@@ -1244,22 +1291,22 @@ class InvestmentHandler(Interceptor):
                 weight = weight * -1
             fact['weight'] = weight
             user_invest_configs['coef'] = user_invest_configs['coef'] + (weight / 100)
-            http_repository.update("user_invest_configs", ["investment_id"], user_invest_configs, headers)
+            self.remote_repository.update("user_invest_configs", ["investment_id"], user_invest_configs, headers)
         return user_invest_configs
 
     def get_investment_facts_labels(self, headers=None):
-        select = utils.read_file("static/FactsLabels.sql")
-        return http_repository.execute_select(select, headers)
+        select = Utils.read_file("static/FactsLabels.sql")
+        return self.remote_repository.execute_select(select, headers)
 
     def get_investment_facts(self, ticker, headers=None):
         filter = {
             "ticker": ticker,
         }
-        stock_ = http_repository.get_object("stocks", ["ticker"], filter, headers)
+        stock_ = self.remote_repository.get_object("stocks", ["ticker"], filter, headers)
         filter = {
             "investment_id": stock_['id'],
         }
-        facts = http_repository.get_objects("user_invest_facts", ["investment_id"], filter, headers)
+        facts = self.remote_repository.get_objects("user_invest_facts", ["investment_id"], filter, headers)
         for fact in facts:
             del fact['investment_id']
             fact['ticker'] = ticker
@@ -1267,20 +1314,21 @@ class InvestmentHandler(Interceptor):
 
     def investment_calc(self, data, headers=None):
         user_invest_apply = {'amount': data['amount']}
-        http_repository.insert("user_invest_apply", user_invest_apply, headers)
+        self.remote_repository.insert("user_invest_apply", user_invest_apply, headers)
         select = f"select * from user_invest_apply where user_id = :user_id " \
                  f" order by apply_date desc limit 1"
-        user_invest_apply = http_repository.execute_select(select, headers)[0]
-        perc_ideal_investment_types = http_repository.get_all_objects("perc_ideal_investment_type", headers)
+        user_invest_apply = self.remote_repository.execute_select(select, headers)[0]
+        perc_ideal_investment_types = self.remote_repository.get_all_objects("perc_ideal_investment_type", headers)
         amount_types = []
-        resume = http_repository.get_object("resume_values", [], {}, headers)
+        resume = self.remote_repository.get_object("resume_values", [], {}, headers)
         total_amount = 0
         resto_total = 0
-        config_ = http_repository.get_object_new("configs", {}, headers)
+        config_ = self.remote_repository.get_object("configs", data={}, headers=headers)
         for investment_type in perc_ideal_investment_types:
             perc_ideal = investment_type['perc_ideal'] / 100
-            type_gruped_values = http_repository.get_object("type_gruped_values", ["type_id"],
-                                                            {"type_id": investment_type['investment_type_id']}, headers)
+            type_gruped_values = self.remote_repository.get_object("type_gruped_values", ["type_id"],
+                                                                   {"type_id": investment_type['investment_type_id']},
+                                                                   headers)
 
             amount_atu = type_gruped_values['total_value_atu']
             amount = perc_ideal * (resume['total_value_atu'] + user_invest_apply['amount'])
@@ -1294,7 +1342,7 @@ class InvestmentHandler(Interceptor):
             amount = amount_type['amount']
             if amount > 100:
                 amount_type['amount'] = data['amount'] * (amount / total_amount)
-                http_repository.insert("user_invest_apply_type", amount_type, headers)
+                self.remote_repository.insert("user_invest_apply_type", amount_type, headers)
 
             investment_type_id = amount_type['investment_type_id']
             total_amount_stock = 0
@@ -1302,7 +1350,7 @@ class InvestmentHandler(Interceptor):
             user_recomendations = []
             if investment_type_id == 16:
                 amount = amount_type['amount']
-                stock_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
+                stock_ = self.remote_repository.get_object("stocks", data={"ticker": "Renda fixa"}, headers=headers)
                 total_amount_stock = total_amount_stock + amount
                 amount_stocks.append({'investment_id': stock_['id'], 'amount': amount,
                                       'user_invest_apply_id': user_invest_apply['id']})
@@ -1318,7 +1366,7 @@ class InvestmentHandler(Interceptor):
                                                                     {amount_type['investment_type_id']} \
                                                                     and us.quantity >0)) \
                          order by rank"
-                user_recomendations = http_repository.execute_select(select, headers)
+                user_recomendations = self.remote_repository.execute_select(select, headers)
                 for user_recomendation in user_recomendations:
                     amount, stock_ = self.get_amount_value(user_recomendation,
                                                            resume,
@@ -1335,7 +1383,7 @@ class InvestmentHandler(Interceptor):
             amount_ajsut = 0
             for amount_stock in amount_stocks:
                 stock_ = \
-                    http_repository.get_object("stocks", ["id"], {"id": amount_stock['investment_id']}, headers)
+                    self.remote_repository.get_object("stocks", ["id"], {"id": amount_stock['investment_id']}, headers)
                 amount = amount_stock['amount']
                 if amount > stock_['price'] or stock_['investment_type_id'] == 100:
                     amount_stock['amount'] = amount_type['amount'] * (amount / total_amount_stock)
@@ -1355,7 +1403,7 @@ class InvestmentHandler(Interceptor):
                 for ajsut in amount_stocks_ajust:
                     amount_ = ajsut['amount']
                     stock_ = \
-                        http_repository.get_object("stocks", ["id"], {"id": ajsut['investment_id']}, headers)
+                        self.remote_repository.get_object("stocks", ["id"], {"id": ajsut['investment_id']}, headers)
                     ajsut['amount'] = amount_type['amount'] * (ajsut['amount'] / amount_ajsut)
                     if ajsut['amount'] > amount_:
                         ajsut['amount'] = amount_
@@ -1366,7 +1414,7 @@ class InvestmentHandler(Interceptor):
                     ajsut['amount'] = num_quotas * stock_['price']
                     ajsut['num_quotas'] = num_quotas
                     amount_stock_temp = amount_stock_temp + ajsut['amount']
-                    http_repository.insert("user_invest_apply_stock", ajsut, headers)
+                    self.remote_repository.insert("user_invest_apply_stock", ajsut, headers)
             resto = amount_type['amount'] - amount_stock_temp
             continuar = True
             while continuar and resto > 0:
@@ -1382,57 +1430,71 @@ class InvestmentHandler(Interceptor):
                     valid = self.get_is_valid_buy(stock_, headers)
                     if resto > stock_['price'] and amount > 0 and valid:
                         user_invest_apply_stock = \
-                            http_repository.get_object("user_invest_apply_stock",
-                                                       ["investment_id", "user_invest_apply_id"],
-                                                       {"investment_id": user_recomendation['investment_id'],
-                                                        "user_invest_apply_id": user_invest_apply['id']}, headers)
+                            self.remote_repository.get_object("user_invest_apply_stock",
+                                                              ["investment_id", "user_invest_apply_id"],
+                                                              {"investment_id": user_recomendation['investment_id'],
+                                                               "user_invest_apply_id": user_invest_apply['id']},
+                                                              headers)
                         if user_invest_apply_stock is None:
                             amount_stock = {'investment_id': user_recomendation['investment_id'],
                                             'amount': 0,
                                             'num_quotas': 0,
                                             'user_invest_apply_id': user_invest_apply['id']}
-                            http_repository.insert("user_invest_apply_stock", amount_stock, headers)
+                            self.remote_repository.insert("user_invest_apply_stock", amount_stock, headers)
                             user_invest_apply_stock = \
-                                http_repository.get_object("user_invest_apply_stock",
-                                                           ["investment_id", "user_invest_apply_id"],
-                                                           {"investment_id": user_recomendation['investment_id'],
-                                                            "user_invest_apply_id": user_invest_apply['id']}, headers)
+                                self.remote_repository.get_object("user_invest_apply_stock",
+                                                                  ["investment_id", "user_invest_apply_id"],
+                                                                  {"investment_id": user_recomendation['investment_id'],
+                                                                   "user_invest_apply_id": user_invest_apply['id']},
+                                                                  headers)
                         if user_invest_apply_stock['amount'] < amount:
                             user_invest_apply_stock['amount'] = user_invest_apply_stock['amount'] + stock_['price']
                             user_invest_apply_stock['num_quotas'] = user_invest_apply_stock['num_quotas'] + 1
-                            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
-                                                   headers)
+                            self.remote_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
+                                                          headers)
                             resto = resto - stock_['price']
                 if resto_temp == resto:
                     continuar = False
-                    print(resto, amount_type['investment_type_id'])
+                    self.logger.info(resto)
+                    self.logger.info(amount_type['investment_type_id'])
                     resto_total = resto_total + resto
                     break
         if resto_total > 0:
-            print(resto_total)
-            stock_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
-            user_invest_apply_stock = \
-                http_repository.get_object("user_invest_apply_stock",
-                                           ["investment_id", "user_invest_apply_id"],
-                                           {"investment_id": stock_['id'],
-                                            "user_invest_apply_id": user_invest_apply['id']}, headers)
+            self.logger.info(resto_total)
+            stock_ = self.remote_repository.get_object(
+                "stocks",
+                data={"ticker": "Renda fixa"},
+                headers=headers
+            )
+            user_invest_apply_stock = self.remote_repository.get_object(
+                "user_invest_apply_stock",
+                ["investment_id", "user_invest_apply_id"],
+                {
+                    "investment_id": stock_['id'],
+                    "user_invest_apply_id": user_invest_apply['id']
+                },
+                headers
+            )
 
             if user_invest_apply_stock is None:
                 amount_stock = {'investment_id': stock_['id'],
                                 'amount': resto_total,
                                 'num_quotas': resto_total,
                                 'user_invest_apply_id': user_invest_apply['id']}
-                http_repository.insert("user_invest_apply_stock", amount_stock, headers)
+                self.remote_repository.insert("user_invest_apply_stock", amount_stock, headers)
             else:
                 user_invest_apply_stock['amount'] = user_invest_apply_stock['amount'] + resto_total
                 user_invest_apply_stock['num_quotas'] = user_invest_apply_stock['num_quotas'] + resto_total
-                http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
-                                       headers)
+                self.remote_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock,
+                                              headers)
 
         self.get_sell_sugestions(user_invest_apply, headers)
-        return http_repository.get_objects("user_invest_apply_stock",
-                                           ['user_invest_apply_id'], {'user_invest_apply_id': user_invest_apply['id']},
-                                           headers)
+        return self.remote_repository.get_objects(
+            "user_invest_apply_stock",
+            ['user_invest_apply_id'],
+            {'user_invest_apply_id': user_invest_apply['id']},
+            headers
+        )
 
     def get_is_valid_buy(self, stock_, headers):
         tiker_prefix = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
@@ -1442,26 +1504,37 @@ class InvestmentHandler(Interceptor):
                   f"and user_id = :user_id "
                   f"and s.ticker <> '{stock_['ticker']}' "
                   f"and s.ticker like '{tiker_prefix}%'")
-        user_stocks_ = http_repository.execute_select(select, headers)
+        user_stocks_ = self.remote_repository.execute_select(select, headers)
         valid = True
         if user_stocks_.__len__() > 0:
             valid = False
         return valid
 
     def get_amount_value(self, user_recomendation, resume, headers, rank=20, aport_value=0):
-        stock_ = \
-            http_repository.get_object("stocks", ["id"], {"id": user_recomendation['investment_id']}, headers)
+        stock_ = self.remote_repository.get_object(
+            "stocks",
+            ["id"],
+            {"id": user_recomendation['investment_id']},
+            headers
+        )
         perc_ideal = self.get_ticker_weight_ideal(stock_['ticker'], headers, rank)
 
-        user_stock = \
-            http_repository.get_object("user_stocks", ["investment_id"], user_recomendation, headers)
+        user_stock = self.remote_repository.get_object(
+            "user_stocks",
+            ["investment_id"],
+            user_recomendation,
+            headers
+        )
         if stock_['segment_custom'] is not None:
             segment_ = stock_['segment_custom']
         else:
             segment_ = stock_["segment"]
-        user_segments_configs = \
-            http_repository.get_object("user_segments_configs", ["segment_name"], {"segment_name": segment_},
-                                       headers)
+        user_segments_configs = self.remote_repository.get_object(
+            "user_segments_configs",
+            ["segment_name"],
+            {"segment_name": segment_},
+            headers
+        )
         if user_stock is not None:
             amount_atu = user_stock['quantity'] * stock_['price']
         else:
@@ -1482,13 +1555,13 @@ class InvestmentHandler(Interceptor):
 
     def get_sell_sugestions(self, user_invest_apply, headers=None):
 
-        user_stocks = http_repository.get_all_objects("user_stocks", headers)
+        user_stocks = self.remote_repository.get_all_objects("user_stocks", headers)
         user_stocks = [user_stock for user_stock in user_stocks if user_stock['quantity'] > 0]
         for user_stock in user_stocks:
             stock_ = \
-                http_repository.get_object("stocks", ["id"], {"id": user_stock['investment_id']}, headers)
+                self.remote_repository.get_object("stocks", ["id"], {"id": user_stock['investment_id']}, headers)
             user_recommendation = \
-                http_repository.get_object("user_recomendations", ["investment_id"], user_stock, headers)
+                self.remote_repository.get_object("user_recomendations", ["investment_id"], user_stock, headers)
 
             user_invest_sell_stock = {
                 "user_invest_apply_id": user_invest_apply['id'],
@@ -1504,38 +1577,47 @@ class InvestmentHandler(Interceptor):
                     if user_recommendation['rank'] > 20:
                         user_invest_sell_stock["motive"] = \
                             user_recommendation['buy_sell_indicator'] + " - " + str(user_recommendation['rank'])
-                        http_repository.insert("user_invest_sell_stock", user_invest_sell_stock, headers)
+                        self.remote_repository.insert("user_invest_sell_stock", user_invest_sell_stock, headers)
             else:
                 user_invest_sell_stock["motive"] = "not recommended"
-                http_repository.insert("user_invest_sell_stock", user_invest_sell_stock, headers)
+                self.remote_repository.insert("user_invest_sell_stock", user_invest_sell_stock, headers)
 
     def last_investment_calc(self, headers=None):
-        user_ = http_repository.get_object("users", [], [], headers)
+        user_ = self.remote_repository.get_object("users", [], [], headers)
         select = f"select * from user_invest_apply where user_id = {user_['id']}" \
                  f" order by apply_date desc limit 1"
-        user_invest_apply = http_repository.execute_select(select, headers)[0]
+        user_invest_apply = self.remote_repository.execute_select(select, headers)[0]
         return self.investment_calc_info(user_invest_apply, headers)
 
     def investment_calc_info(self, user_invest_apply, headers):
-        stock_recomendations = http_repository.get_objects("user_invest_apply_stock",
-                                                           ['user_invest_apply_id'],
-                                                           {'user_invest_apply_id': user_invest_apply['id']},
-                                                           headers)
+        stock_recomendations = self.remote_repository.get_objects(
+            "user_invest_apply_stock",
+            ['user_invest_apply_id'],
+            {'user_invest_apply_id': user_invest_apply['id']},
+            headers
+        )
         stock_recomendations_ = []
         for stock_recomendation in stock_recomendations:
-            stock_ = http_repository.get_object("stocks", ["id"],
-                                                {"id": stock_recomendation['investment_id']},
-                                                headers)
-            user_recomendation_ = http_repository.get_object_new("user_recomendations",
-                                                                 {"investment_id": stock_['id']},
-                                                                 headers)
+            stock_ = self.remote_repository.get_object(
+                "stocks",
+                ["id"],
+                {"id": stock_recomendation['investment_id']},
+                headers
+            )
+            user_recomendation_ = self.remote_repository.get_object(
+                "user_recomendations",
+                data={"investment_id": stock_['id']},
+                headers=headers
+            )
             if user_recomendation_ is None:
                 user_recomendation_ = {
                     "rank": 1
                 }
-            user_stock_ = http_repository.get_object_new("user_stocks",
-                                                         {"investment_id": stock_['id']},
-                                                         headers)
+            user_stock_ = self.remote_repository.get_object(
+                "user_stocks",
+                data={"investment_id": stock_['id']},
+                headers=headers
+            )
             if user_stock_ is None:
                 user_stock_ = {
                     "quantity": 0
@@ -1567,18 +1649,22 @@ class InvestmentHandler(Interceptor):
 
         stock_recomendations_ = sorted(stock_recomendations_,
                                        key=lambda k: (k['order'], k['investment_type_id'], k['rank']))
-        type_invest_recomendations = http_repository.get_objects("user_invest_apply_type",
-                                                                 ['user_invest_apply_id'],
-                                                                 {'user_invest_apply_id': user_invest_apply['id']},
-                                                                 headers)
+        type_invest_recomendations = self.remote_repository.get_objects(
+            "user_invest_apply_type",
+            ['user_invest_apply_id'],
+            {'user_invest_apply_id': user_invest_apply['id']},
+            headers
+        )
         type_invest_recomendations_ = []
         for type_invest_recomendation in type_invest_recomendations:
             type_invest_recomendation_ = {
                 "id": type_invest_recomendation['id'],
                 "investment_type_id": type_invest_recomendation['investment_type_id'],
-                "investment_type": http_repository.get_object("investment_types", ["id"],
-                                                              {"id": type_invest_recomendation['investment_type_id']},
-                                                              headers)['name'],
+                "investment_type": self.remote_repository.get_object(
+                    "investment_types", ["id"],
+                    {"id": type_invest_recomendation['investment_type_id']},
+                    headers
+                )['name'],
                 "amount": type_invest_recomendation['amount'],
                 "value_invested": type_invest_recomendation['value_invested']
             }
@@ -1596,20 +1682,34 @@ class InvestmentHandler(Interceptor):
     def save_aplly_stock(self, apply_stock, headers):
         if 'cancel' not in apply_stock:
             apply_stock['cancel'] = 'N'
-        user_invest_apply_stock = http_repository.get_object("user_invest_apply_stock", ["id"], apply_stock, headers)
+        user_invest_apply_stock = self.remote_repository.get_object(
+            "user_invest_apply_stock",
+            ["id"],
+            apply_stock,
+            headers
+        )
         if (user_invest_apply_stock is not None and user_invest_apply_stock['invested'] == 'N'
                 and apply_stock['tax_or_price'] > 0 and apply_stock['value_or_cotas'] > 0
                 and apply_stock['cancel'] == 'N'):
-            user_invest_apply = http_repository.get_object("user_invest_apply", ["id"],
-                                                           {"id": user_invest_apply_stock['user_invest_apply_id']},
-                                                           headers)
-            stock_ = http_repository.get_object_new("stocks",
-                                                    {"id": user_invest_apply_stock['investment_id']},
-                                                    headers)
-            user_invest_apply_type_ = http_repository.get_object_new("user_invest_apply_type", {
-                "investment_type_id": stock_['investment_type_id'],
-                "user_invest_apply_id": user_invest_apply_stock['user_invest_apply_id']
-            }, headers)
+            user_invest_apply = self.remote_repository.get_object(
+                "user_invest_apply",
+                ["id"],
+                {"id": user_invest_apply_stock['user_invest_apply_id']},
+                headers
+            )
+            stock_ = self.remote_repository.get_object(
+                "stocks",
+                data={"id": user_invest_apply_stock['investment_id']},
+                headers=headers
+            )
+            user_invest_apply_type_ = self.remote_repository.get_object(
+                "user_invest_apply_type",
+                data={
+                    "investment_type_id": stock_['investment_type_id'],
+                    "user_invest_apply_id": user_invest_apply_stock['user_invest_apply_id']
+                },
+                headers=headers
+            )
 
             if stock_['investment_type_id'] == 16:
                 movement = {
@@ -1664,20 +1764,43 @@ class InvestmentHandler(Interceptor):
                 if diff_ < user_invest_apply_stock['avg_value_quota_invested']:
                     user_invest_apply_stock['invested'] = 'S'
 
-                    stock_rf_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
-                    user_invest_apply_stock_rf = (
-                        http_repository.get_object_new("user_invest_apply_stock",
-                                                       {"investment_id": stock_rf_['id'],
-                                                        "user_invest_apply_id": user_invest_apply['id']},
-                                                       headers))
+                    stock_rf_ = self.remote_repository.get_object(
+                        "stocks",
+                        data={"ticker": "Renda fixa"},
+                        headers=headers
+                    )
+                    user_invest_apply_stock_rf = self.remote_repository.get_object(
+                        "user_invest_apply_stock",
+                        data={
+                            "investment_id": stock_rf_['id'],
+                            "user_invest_apply_id": user_invest_apply['id']
+                        },
+                        headers=headers
+                    )
+
                     user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
                     user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
-                    http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)
+                    self.remote_repository.update(
+                        "user_invest_apply_stock",
+                        ["id"],
+                        user_invest_apply_stock_rf,
+                        headers
+                    )
             apply_stock['invested'] = user_invest_apply_stock['invested']
 
-            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
-            http_repository.update("user_invest_apply", ["id"], user_invest_apply, headers)
-            http_repository.update("user_invest_apply_type", ["id"], user_invest_apply_type_, headers)
+            self.remote_repository.update(
+                "user_invest_apply_stock",
+                ["id"],
+                user_invest_apply_stock,
+                headers
+            )
+            self.remote_repository.update("user_invest_apply", ["id"], user_invest_apply, headers)
+            self.remote_repository.update(
+                "user_invest_apply_type",
+                ["id"],
+                user_invest_apply_type_,
+                headers
+            )
 
             added_ = {"status": "Sucesso", "message": "Aporte salvo com sucesso"}
             msg_ = "Será gerado o movimento de aplicação a seguir: " + str(movement)
@@ -1686,36 +1809,66 @@ class InvestmentHandler(Interceptor):
                 self.add_movement(movement, headers)
             return apply_stock
         elif apply_stock['cancel'] == 'S' and user_invest_apply_stock is not None:
-            stock_rf_ = http_repository.get_object_new("stocks", {"ticker": "Renda fixa"}, headers)
-            user_invest_apply = http_repository.get_object("user_invest_apply", ["id"],
-                                                           {"id": user_invest_apply_stock['user_invest_apply_id']},
-                                                           headers)
-            user_invest_apply_stock_rf = (
-                http_repository.get_object_new("user_invest_apply_stock",
-                                               {"investment_id": stock_rf_['id'],
-                                                "user_invest_apply_id": user_invest_apply['id']},
-                                               headers))
+            stock_rf_ = self.remote_repository.get_object(
+                "stocks",
+                data={"ticker": "Renda fixa"},
+                headers=headers
+            )
+            user_invest_apply = self.remote_repository.get_object(
+                "user_invest_apply",
+                ["id"],
+                {"id": user_invest_apply_stock['user_invest_apply_id']},
+                headers
+            )
+            user_invest_apply_stock_rf = self.remote_repository.get_object(
+                "user_invest_apply_stock",
+                data={
+                    "investment_id": stock_rf_['id'],
+                    "user_invest_apply_id": user_invest_apply['id']
+                },
+                headers=headers
+            )
             diff_ = user_invest_apply_stock['amount'] - (
                     user_invest_apply_stock['num_quotas_invested'] *
                     user_invest_apply_stock['avg_value_quota_invested'])
             user_invest_apply_stock_rf['amount'] = user_invest_apply_stock_rf['amount'] + diff_
             user_invest_apply_stock_rf['num_quotas'] = user_invest_apply_stock_rf['num_quotas'] + diff_
-            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock_rf, headers)
+            self.remote_repository.update(
+                "user_invest_apply_stock",
+                ["id"],
+                user_invest_apply_stock_rf,
+                headers
+            )
             user_invest_apply_stock['invested'] = 'C'
-            http_repository.update("user_invest_apply_stock", ["id"], user_invest_apply_stock, headers)
+            self.remote_repository.update(
+                "user_invest_apply_stock",
+                ["id"],
+                user_invest_apply_stock,
+                headers
+            )
         else:
-            print("Não foi salvo", apply_stock)
+            self.logger.info(f"Não foi salvo {apply_stock}")
             added_ = {"status": "Cuidado", "message": "Registro sem informação de investimento"}
             msg_ = "Não foi salvo: " + str(apply_stock)
             Utils.inform_to_client(added_, "Aporte", headers, msg_)
 
     def save_aplly_stock_sell(self, apply_stock, headers):
-        user_invest_sell_stock = http_repository.get_object("user_invest_sell_stock", ["id"], apply_stock, headers)
+        user_invest_sell_stock = self.remote_repository.get_object(
+            "user_invest_sell_stock",
+            ["id"],
+            apply_stock,
+            headers
+        )
         if user_invest_sell_stock is not None and user_invest_sell_stock['executed'] == 'N':
             user_invest_sell_stock['num_quotas'] = apply_stock['num_quotas']
             user_invest_sell_stock['avg_price_quota'] = apply_stock['avg_price_quota']
             user_invest_sell_stock['executed'] = 'S'
-            http_repository.update("user_invest_sell_stock", ["id"], user_invest_sell_stock, headers)
+            self.remote_repository.update(
+                "user_invest_sell_stock",
+                ["id"],
+                user_invest_sell_stock,
+                headers
+            )
             movement = {
                 "movement_type": 2,
                 "ticker": apply_stock['ticker'],
@@ -1752,7 +1905,7 @@ class InvestmentHandler(Interceptor):
             try:
                 self.add_resumes_period(args_, headers)
             except Exception as e:
-                print(e)
+                self.logger.exception(e)
                 pass
 
     def add_resumes_period(self, args, headers):
@@ -1802,27 +1955,27 @@ class InvestmentHandler(Interceptor):
             args_['data_ini'] = data_ini_
             if args_['refazer_data_fim'] == 'S':
                 msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi solicitado. Os argumentos são: {args_}"
-                request_handler.inform_to_client(args_, "Resumo por período solicitado", headers, msg_)
+                Utils.inform_to_client(args_, "Resumo por período solicitado", headers, msg_)
                 for date in date_range:
-                    print(tipo + " data ini -> " + data_ini_ + " data fim -> " + date.strftime("%Y-%m-%d"))
+                    self.logger.info(tipo + " data ini -> " + data_ini_ + " data fim -> " + date.strftime("%Y-%m-%d"))
                     if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
                         args_['data_fim'] = date.strftime("%Y-%m-%d")
                         try:
                             self.get_resume_invest(args_, headers)
                         except Exception as e:
-                            print(e)
+                            self.logger.exception(e)
                             pass
 
             if args_['refazer_data_ini'] == 'S':
                 for date in date_range:
-                    print(tipo + " data ini -> " + date.strftime("%Y-%m-%d"))
-                    print(tipo + " data ini -> " + date.strftime("%Y-%m-%d") + " data fim -> " + data_fim_)
+                    self.logger.info(tipo + " data ini -> " + date.strftime("%Y-%m-%d"))
+                    self.logger.info(tipo + " data ini -> " + date.strftime("%Y-%m-%d") + " data fim -> " + data_fim_)
                     if date.strftime("%Y-%m-%d") > data_ini_ and date.strftime("%Y-%m-%d") < data_fim_:
                         args_['data_ini'] = date.strftime("%Y-%m-%d")
                         try:
                             self.get_resume_invest(args_, headers)
                         except Exception as e:
-                            print(e)
+                            self.logger.exception(e)
                             pass
             args_['data_ini'] = data_ini_
             args_['data_fim'] = data_fim_
@@ -1831,12 +1984,12 @@ class InvestmentHandler(Interceptor):
                 "data_fim": args_['data_fim'],
                 "type": args_['tipo'],
             }
-            http_repository.insert("user_resume_calculed", resume_calculed, headers)
+            self.remote_repository.insert("user_resume_calculed", resume_calculed, headers)
             msg_ = f"O resumo do período {data_ini_} até {data_fim_} foi adicionado com sucesso. Os argumentos foram: {args_}"
-            request_handler.inform_to_client(args_, "Resumo por perído finalizado", headers, msg_)
+            Utils.inform_to_client(args_, "Resumo por perído finalizado", headers, msg_)
 
     def get_resume_invest_grafic(self, args, headers):
-        select = utils.read_file("static/resume_grafic.sql")
+        select = Utils.read_file("static/resume_grafic.sql")
         args_ = {}
         for key in args:
             args_[key] = args[key]
@@ -1878,7 +2031,7 @@ class InvestmentHandler(Interceptor):
                 select = select.replace(":" + key, args_[key])
             else:
                 select = select.replace(":" + key, "'" + args_[key] + "'")
-        result_ = http_repository.execute_select(select, headers)
+        result_ = self.remote_repository.execute_select(select, headers)
 
         dates = []
         labels = []
@@ -1906,7 +2059,7 @@ class InvestmentHandler(Interceptor):
         return result_
 
     def get_resume_invest(self, args, headers):
-        select = utils.read_file("static/Resume.sql")
+        select = Utils.read_file("static/Resume.sql")
         args_ = {}
         for key in args:
             args_[key] = args[key]
@@ -1938,14 +2091,14 @@ class InvestmentHandler(Interceptor):
         args_['data_fim'] = data_fim_ + " 23:59:59.999"
         for key in args_:
             select = select.replace(":" + key, "'" + args_[key] + "'")
-        result_ = http_repository.execute_select(select, headers)
+        result_ = self.remote_repository.execute_select(select, headers)
         results_save_ = []
         for res_ in result_:
             result_save_ = res_
             result_save_['data_ini'] = data_ini_
             result_save_['data_fim'] = data_fim_
             results_save_.append(result_save_)
-        http_repository.insert("user_resume_values", results_save_, headers)
+        self.remote_repository.insert("user_resume_values", results_save_, headers)
         if args_['tipo'] != 'carteira':
             args_carteira_ = {}
             args_carteira_['ticker'] = 'all'
@@ -1969,8 +2122,8 @@ class InvestmentHandler(Interceptor):
     def load_prices(self, ticker, type, name=None, headers=None, data_=None):
         if name is None:
             name = ticker
-        stock_ = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker}, headers)
-        infos = http_repository.get_prices(name, type, False, "4")
+        stock_ = self.remote_repository.get_object("stocks", ["ticker"], {"ticker": ticker}, headers)
+        infos = self.http_repository.get_prices(name, type, False, "4")
         for info in infos:
             prices = info['prices']
             for price in prices:

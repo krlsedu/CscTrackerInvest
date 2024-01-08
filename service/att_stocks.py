@@ -1,16 +1,14 @@
 import decimal
 import json
+import logging
 from datetime import datetime
 
-from repository.HttpRepository import HttpRepository
-from service.FixedIncome import FixedIncome
-from service.Interceptor import Interceptor
-from service.InvestmentHandler import InvestmentHandler
-from service.LoadInfo import load_fiis_info, load_acoes_info, load_bdr_info, load_indices
+from csctracker_py_core.repository.http_repository import HttpRepository
+from csctracker_py_core.repository.remote_repository import RemoteRepository
 
-investment_handler = InvestmentHandler()
-http_repository = HttpRepository()
-fixed_income_handler = FixedIncome()
+from service.fixed_income import FixedIncome
+from service.investment_handler import InvestmentHandler
+from service.load_info import LoadInfo
 
 
 class Encoder(json.JSONEncoder):
@@ -19,67 +17,78 @@ class Encoder(json.JSONEncoder):
             return float(obj)
 
 
-class AttStocks(Interceptor):
-    def __init__(self):
-        super().__init__()
+class AttStocks:
+    def __init__(self,
+                 load_info: LoadInfo,
+                 fixed_income_handler: FixedIncome,
+                 investment_handler: InvestmentHandler,
+                 remote_repository: RemoteRepository,
+                 http_repository: HttpRepository):
+        self.logger = logging.getLogger()
+        self.load_info = load_info
+        self.fixed_income_handler = fixed_income_handler
+        self.investment_handler = investment_handler
+        self.remote_repository = remote_repository
+        self.http_repository = http_repository
+
 
     def att_expres(self, headers=None):
-        print("Atualizando indices")
+        self.logger.info("Atualizando indices")
         self.att_indices(headers)
-        print("Atualizando fiis express")
+        self.logger.info("Atualizando fiis express")
         self.att_fiis(headers, False, True)
-        print("Atualizando acoes express")
+        self.logger.info("Atualizando acoes express")
         self.att_acoes(headers, False, True)
-        print("Atualizando Criptos")
+        self.logger.info("Atualizando Criptos")
         self.att_criptos(headers)
-        print("Atualizando fundos")
+        self.logger.info("Atualizando fundos")
         self.att_fundos(headers)
-        print("Atualizando bdrs")
+        self.logger.info("Atualizando bdrs")
         self.att_brd_expres(headers)
-        print("Atualizando ranks")
-        investment_handler.att_stocks_ranks(headers)
-        print("Atualizando fiis")
+        self.logger.info("Atualizando ranks")
+        self.investment_handler.att_stocks_ranks(headers)
+        self.logger.info("Atualizando fiis")
         self.att_fiis(headers)
-        print("Atualizando acoes")
+        self.logger.info("Atualizando acoes")
         self.att_acoes(headers)
-        print("Atualizando Criptos")
+        self.logger.info("Atualizando Criptos")
         self.att_criptos(headers)
-        print("Atualizando fundos")
+        self.logger.info("Atualizando fundos")
         self.att_fundos(headers)
-        print("Atualizando bdrs")
+        self.logger.info("Atualizando bdrs")
         self.att_brd_expres(headers)
-        investment_handler.att_stocks_ranks(headers)
-        print("end att express")
+        self.investment_handler.att_stocks_ranks(headers)
+        self.logger.info("end att express")
 
     def att_full(self, headers=None):
-        print("Atualizando fiis")
+        self.logger.info("Atualizando fiis")
         self.att_fiis(headers, True)
-        print("Atualizando acoes")
+        self.logger.info("Atualizando acoes")
         self.att_acoes(headers, True)
-        print("Atualizando Criptos")
+        self.logger.info("Atualizando Criptos")
         self.att_criptos(headers)
-        print("Atualizando fundos")
+        self.logger.info("Atualizando fundos")
         self.att_fundos(headers)
-        print("Atualizando BDRs")
+        self.logger.info("Atualizando BDRs")
         self.att_bdr(headers)
-        print("Atualizando ranks")
-        investment_handler.att_stocks_ranks(headers)
-        print("end att full")
+        self.logger.info("Atualizando ranks")
+        self.investment_handler.att_stocks_ranks(headers)
+        self.logger.info("end att full")
 
     def att_acoes(self, headers=None, full=False, express=False):
         if express:
             acoes = self.load_my_invest(headers, 1)
         else:
-            acoes = load_acoes_info()
+            acoes = self.load_info.load_acoes_info()
         count_ = 0
         for acao in acoes:
             count_ += 1
             try:
-                print(f"Atualizando a acao: {acao['ticker']} - {count_}/{len(acoes)}")
-                stock_ = investment_handler.get_stock(acao['ticker'], headers)
+                self.logger.info(f"Atualizando a acao: {acao['ticker']} - {count_}/{len(acoes)}")
+                stock_ = self.investment_handler.get_stock(acao['ticker'], headers)
 
                 if full:
-                    stock_, investment_type, _ = http_repository.get_values_by_ticker(stock_, True, headers)
+                    stock_, investment_type, _ = self.http_repository.get_values_by_ticker(stock_, True, headers)
                 else:
                     try:
                         stock_['price'] = acao['price']
@@ -90,54 +99,58 @@ class AttStocks(Interceptor):
                     except Exception as e:
                         pass
 
-                stock_ = investment_handler.att_dividend_info(stock_, headers)
+                stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                investment_handler.att_price_yahoo(stock_, headers)
+                self.investment_handler.att_price_yahoo(stock_, headers)
 
-                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print(f"Erro ao atualizar {acao['ticker']} - {e}")
+                self.logger.info(f"Erro ao atualizar {acao['ticker']} - {e}")
+                self.logger.exception(e)
         return acoes
 
     def att_criptos(self, headers=None, full=False):
-        acoes = http_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 100}, headers)
+        acoes = self.remote_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 100},
+                                                   headers)
         for acao in acoes:
             try:
-                print(f"Atualizando cripto: {acao['ticker']}")
-                stock_ = investment_handler.get_stock(acao['ticker'], headers)
+                self.logger.info(f"Atualizando cripto: {acao['ticker']}")
+                stock_ = self.investment_handler.get_stock(acao['ticker'], headers)
 
-                stock_ = investment_handler.att_dividend_info(stock_, headers)
+                stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                investment_handler.att_price_yahoo_us(stock_, headers)
+                self.investment_handler.att_price_yahoo_us(stock_, headers)
 
-                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print(f"Erro ao atualizar {acao['ticker']} - {e}")
+                self.logger.info(f"Erro ao atualizar {acao['ticker']} - {e}")
+                self.logger.exception(e)
         return acoes
 
     def att_bdrs(self, headers=None):
         self.att_bdr(headers)
-        investment_handler.att_stocks_ranks(headers)
+        self.investment_handler.att_stocks_ranks(headers)
 
     def att_bdr(self, headers=None):
-        bdrs = load_bdr_info()
+        bdrs = self.load_info.load_bdr_info()
         count_ = 0
         for bdr in bdrs:
             count_ += 1
             try:
                 company_ = bdr['url']
                 company_ = company_.replace('/bdrs/', '')
-                print(f"Atualizando BDR: {company_} - {count_}/{len(bdrs)}")
-                stock_ = investment_handler.get_stock(company_, headers)
-                stock_, _, _ = http_repository.get_values_by_ticker(stock_, True, headers)
+                self.logger.info(f"Atualizando BDR: {company_} - {count_}/{len(bdrs)}")
+                stock_ = self.investment_handler.get_stock(company_, headers)
+                stock_, _, _ = self.http_repository.get_values_by_ticker(stock_, True, headers)
 
-                stock_ = investment_handler.att_dividend_info(stock_, headers)
+                stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                investment_handler.att_info_yahoo(stock_, headers)
+                self.investment_handler.att_info_yahoo(stock_, headers)
 
-                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print(f"Erro ao atualizar {bdr['url']} - {e}")
+                self.logger.info(f"Erro ao atualizar {bdr['url']} - {e}")
+                self.logger.exception(e)
         return bdrs
 
     def att_brd_expres(self, headers=None):
@@ -145,19 +158,19 @@ class AttStocks(Interceptor):
         for bdr in bdrs:
             try:
                 company_ = bdr['ticker']
-                stock_ = investment_handler.get_stock(company_, headers)
-                stock_, investment_type, _ = http_repository.get_values_by_ticker(stock_, True, headers)
+                stock_ = self.investment_handler.get_stock(company_, headers)
+                stock_, investment_type, _ = self.http_repository.get_values_by_ticker(stock_, True, headers)
 
-                stock_ = investment_handler.att_dividend_info(stock_, headers)
+                stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                investment_handler.att_price_yahoo(stock_, headers)
-                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                self.investment_handler.att_price_yahoo(stock_, headers)
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print(f"Erro ao atualizar {bdr['ticker']} - {bdr['name']} - {e}")
+                self.logger.info(f"Erro ao atualizar {bdr['ticker']} - {bdr['name']} - {e}")
         return bdrs
 
     def load_bdr_used(self, headers=None):
-        bdrs = http_repository.execute_select(
+        bdrs = self.remote_repository.execute_select(
             "select * from stocks "
             "where investment_type_id = 4 "
             "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id and quantity > 0)",
@@ -167,7 +180,7 @@ class AttStocks(Interceptor):
     def load_my_invest(self, headers, investment_type_id):
         keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'name', 'investment_type_id']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
-        bdrs = http_repository.execute_select(
+        bdrs = self.remote_repository.execute_select(
             f"select {ks} from stocks "
             f"where investment_type_id = {investment_type_id} "
             "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id and quantity > 0)",
@@ -178,15 +191,15 @@ class AttStocks(Interceptor):
         if express:
             fiis = self.load_my_invest(headers, 2)
         else:
-            fiis = load_fiis_info(headers)
+            fiis = self.load_info.load_fiis_info(headers)
         count_ = 0
         for fii in fiis:
             count_ += 1
-            print(f"Atualizando o fundo: {fii['ticker']} - {count_}/{len(fiis)}")
+            self.logger.info(f"Atualizando o fundo: {fii['ticker']} - {count_}/{len(fiis)}")
             try:
-                stock_ = investment_handler.get_stock(fii['ticker'], headers)
+                stock_ = self.investment_handler.get_stock(fii['ticker'], headers)
                 if full:
-                    stock_, investment_type, _ = http_repository.get_values_by_ticker(stock_, True, headers)
+                    stock_, investment_type, _ = self.http_repository.get_values_by_ticker(stock_, True, headers)
                 else:
                     try:
                         stock_['price'] = fii['price']
@@ -194,63 +207,65 @@ class AttStocks(Interceptor):
                         stock_['last_dividend'] = fii['lastdividend']
                         stock_['avg_liquidity'] = fii['liquidezmediadiaria']
                     except Exception as e:
-                        print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
+                        self.logger.info("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
                         pass
 
-                stock_ = investment_handler.att_dividend_info(stock_, headers)
+                stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                investment_handler.att_price_yahoo(stock_, headers)
+                self.investment_handler.att_price_yahoo(stock_, headers)
 
-                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
+                self.logger.info("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
         return fiis
 
     def att_fundos(self, headers=None):
-        fundos = http_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15}, headers)
+        fundos = self.remote_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15},
+                                                    headers)
         for fundo in fundos:
             try:
-                stock_, investment_type, _ = http_repository.get_values_by_ticker(fundo, True, headers)
+                stock_, investment_type, _ = self.http_repository.get_values_by_ticker(fundo, True, headers)
 
-                stock_ = investment_handler.att_dividend_info(stock_, headers)
+                stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                http_repository.update("stocks", ["ticker"], stock_, headers)
+                self.http_repository.update("stocks", ["ticker"], stock_, headers)
 
-                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print(f"Erro ao atualizar {fundo['ticker']} - {fundo['name']} - {e}")
+                self.logger.info(f"Erro ao atualizar {fundo['ticker']} - {fundo['name']} - {e}")
         return fundos
 
     def att_prices(self, headers, daily=False):
         if not daily:
-            fundos = http_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15}, headers)
+            fundos = self.remote_repository.get_objects("stocks", ["investment_type_id"], {"investment_type_id": 15},
+                                                        headers)
             self.att_prices_generic(headers, fundos, 'fundo', daily)
-        fiis = load_fiis_info(headers)
+        fiis = self.load_info.load_fiis_info(headers)
         self.att_prices_generic(headers, fiis, 'fii', daily)
-        acoes = load_acoes_info()
+        acoes = self.load_info.load_acoes_info()
         self.att_prices_generic(headers, acoes, 'acao', daily)
-        bdrs = load_bdr_info()
+        bdrs = self.load_info.load_bdr_info()
         self.att_prices_generic(headers, bdrs, 'bdr', daily)
 
     def att_dividends_info(self, headers):
-        my_stocks = http_repository.get_objects("stocks", [], {}, headers)
+        my_stocks = self.remote_repository.get_objects("stocks", [], {}, headers)
         counter = 0
         for stock in my_stocks:
             counter += 1
             stock_ = stock
 
-            print(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
+            self.logger.info(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
                   f"{counter}/{len(my_stocks)}")
             self.dividends_map_info(headers, stock_)
 
     def att_user_dividends_info(self, headers):
-        my_stocks = http_repository.get_objects("user_stocks", [], {}, headers)
+        my_stocks = self.remote_repository.get_objects("user_stocks", [], {}, headers)
         counter = 0
         for stock in my_stocks:
             counter += 1
-            stock_ = http_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
+            stock_ = self.remote_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
             # generate log of progress of stock processing with overal progress
-            print(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
+            self.logger.info(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
                   f"{counter}/{len(my_stocks)}")
             if (stock_['investment_type_id'] == 1
                     or stock_['investment_type_id'] == 2
@@ -260,10 +275,10 @@ class AttStocks(Interceptor):
         self.dividends_info(headers)
 
     def dividends_info(self, headers):
-        my_stocks = http_repository.get_objects("user_stocks", [], {}, headers)
+        my_stocks = self.remote_repository.get_objects("user_stocks", [], {}, headers)
         for stock in my_stocks:
-            stock_ = http_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
-            dividends_map = http_repository.get_objects("dividends_map", ["investment_id"],
+            stock_ = self.remote_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
+            dividends_map = self.remote_repository.get_objects("dividends_map", ["investment_id"],
                                                         {"investment_id": stock_['id']}, headers)
             for dividend_map in dividends_map:
                 try:
@@ -275,10 +290,10 @@ class AttStocks(Interceptor):
                              f"coalesce(sum(case when movement_type = 1 then quantity else -quantity end),0) as quantity " \
                              f"from user_stocks_movements where investment_id = {dividend_map['investment_id']} " \
                              f"and date <= '{dividend_map['date_with']} 23:59:59'"
-                    quantity = http_repository.execute_select(select, headers)[0]['quantity']
+                    quantity = self.remote_repository.execute_select(select, headers)[0]['quantity']
                     if quantity > 0:
                         dividend = {"dividends_map_id": dividend_map['id']}
-                        dividend = http_repository.get_object("dividends", ["dividends_map_id"],
+                        dividend = self.remote_repository.get_object("dividends", ["dividends_map_id"],
                                                               dividend, headers)
                         if dividend is None:
                             dividend = {"investment_id": stock_['id'],
@@ -289,15 +304,15 @@ class AttStocks(Interceptor):
                                         "active": "S",
                                         "quantity": quantity,
                                         }
-                            http_repository.insert("dividends", dividend, headers)
+                            self.remote_repository.insert("dividends", dividend, headers)
                         else:
                             dividend['value_per_quote'] = value_per_quote
                             dividend['quantity'] = quantity
                             dividend['date_payment'] = dividend_map['date_payment']
-                            http_repository.update("dividends", ["id"], dividend, headers)
+                            self.remote_repository.update("dividends", ["id"], dividend, headers)
                 except Exception as e:
-                    print("Erro ao atualizar dividendos de " + stock_['ticker'])
-                    print(e)
+                    self.logger.info("Erro ao atualizar dividendos de " + stock_['ticker'])
+                    self.logger.exception(e)
                     pass
 
     def dividends_map_info(self, headers, stock_):
@@ -317,7 +332,7 @@ class AttStocks(Interceptor):
                 url = f"https://investidor10.com.br/fiis/{stock_['ticker']}"
                 status_invest = False
             try:
-                soup = http_repository.get_soup(url, headers)
+                soup = self.http_repository.get_soup(url, headers)
                 table = None
                 if status_invest:
                     table = soup.find('div', {'id': 'earning-section'})
@@ -365,7 +380,7 @@ class AttStocks(Interceptor):
                                         "date_with": date_with,
                                         "date_payment": date_pay,
                                         "type_id": _type}
-                        dividend_map = http_repository.get_object("dividends_map", ["investment_id", "date_with",
+                        dividend_map = self.remote_repository.get_object("dividends_map", ["investment_id", "date_with",
                                                                                     "date_payment", "type_id"],
                                                                   dividend_map, headers)
                         if dividend_map is None:
@@ -374,15 +389,15 @@ class AttStocks(Interceptor):
                                             "date_payment": date_pay,
                                             "type_id": _type,
                                             "value_per_quote": value}
-                            http_repository.insert("dividends_map", dividend_map, headers)
+                            self.remote_repository.insert("dividends_map", dividend_map, headers)
                         else:
                             dividend_map['value_per_quote'] = value
-                            http_repository.update("dividends_map", ["id"],
+                            self.remote_repository.update("dividends_map", ["id"],
                                                    dividend_map, headers)
 
             except Exception as e:
-                print("Erro ao atualizar dividendos de " + stock_['ticker'])
-                print(e)
+                self.logger.info("Erro ao atualizar dividendos de " + stock_['ticker'])
+                self.logger.exception(e)
                 pass
 
     def convert_pt_br_number_to_db_number(self, number):
@@ -406,19 +421,19 @@ class AttStocks(Interceptor):
         if type == 'bdr':
             company_ = stock['url']
             company_ = company_.replace('/bdrs/', '')
-            print(f"Atualizando o {type}: {company_}")
-            stock_ = investment_handler.get_stock(company_, headers)
+            self.logger.info(f"Atualizando o {type}: {company_}")
+            stock_ = self.investment_handler.get_stock(company_, headers)
             stock['price'] = stock_['price']
         elif type == 'fundo':
             stock_ = stock
         else:
-            print(f"Atualizando a {type}: {stock['ticker']}")
-            stock_ = investment_handler.get_stock(stock['ticker'], headers)
+            self.logger.info(f"Atualizando a {type}: {stock['ticker']}")
+            stock_ = self.investment_handler.get_stock(stock['ticker'], headers)
             stock['price'] = stock_['price']
         if type == 'fundo':
-            investment_handler.att_stock_price_new(headers, daily, stock, stock_, type)
+            self.investment_handler.att_stock_price_new(headers, daily, stock, stock_, type)
         else:
-            investment_handler.att_prices_yahoo(stock_, headers, "1d", "15m")
+            self.investment_handler.att_prices_yahoo(stock_, headers, "1d", "15m")
 
     def update_stock(self, headers, stock):
         if stock['investment_type'] == 2:
@@ -430,26 +445,27 @@ class AttStocks(Interceptor):
         return stock
 
     def att_indices(self, headers):
-        fiis = load_indices(headers)
+        fiis = self.load_info.load_indices(headers)
         count_ = 0
         for fii in fiis:
             count_ += 1
-            print(f"Atualizando o índice: {fii['ticker']} - {count_}/{len(fiis)}")
+            self.logger.info(f"Atualizando o índice: {fii['ticker']} - {count_}/{len(fiis)}")
             try:
-                stock_ = investment_handler.get_stock(fii['ticker'], headers)
+                stock_ = self.investment_handler.get_stock(fii['ticker'], headers)
                 if stock_['tx_type'] is None:
-                    investment_handler.att_price_yahoo(stock_, headers)
-                    stock_['price'] = http_repository.get_info(stock_, "cotacao", headers)
-                    investment_handler.add_stock_price(stock_, headers)
-                    http_repository.update("stocks", ["ticker"], stock_, headers)
+                    self.investment_handler.att_price_yahoo(stock_, headers)
+                    stock_['price'] = self.http_repository.get_info(stock_, "cotacao", headers)
+                    self.investment_handler.add_stock_price(stock_, headers)
+                    self.remote_repository.update("stocks", ["ticker"], stock_, headers)
                 else:
                     movement = {
                         "buy_date": datetime.now().strftime('%Y-%m-%d'),
                         "ticker": stock_['ticker']
                     }
-                    fixed_income_handler.get_stock_price(movement, headers)
+                    self.fixed_income_handler.get_stock_price(movement, headers)
 
-                print(f"{stock_['ticker']} - {stock_['name']} - atualizado")
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
-                print("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
+                self.logger.info("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
+                self.logger.exception(e)
         return fiis
