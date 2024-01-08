@@ -1200,7 +1200,7 @@ class InvestmentHandler:
     def att_stocks_ranks(self, headers=None):
         stocks = self.remote_repository.get_objects("stocks", [], {}, headers)
         stocks = self.calc_ranks(stocks)
-        self.remote_repository.update("stocks", [], stocks, headers)
+        self.remote_repository.insert("stocks",  stocks, headers)
 
     def att_stock_price_new(self, headers, daily, stock, stock_, type, price_type="4", reimport=False, data_=None):
         if stock_['prices_imported'] == 'N' or daily or reimport:
