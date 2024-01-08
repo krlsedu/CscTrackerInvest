@@ -1,29 +1,29 @@
-from flask import request
+import logging
 
-from repository.HttpRepository import HttpRepository
-from service.Interceptor import Interceptor
-from service.LoadInfo import load_fiis_info
+from csctracker_py_core.repository.http_repository import HttpRepository
+from csctracker_py_core.repository.remote_repository import RemoteRepository
 
-http_repository = HttpRepository()
-
-headers_sti = {
-    'Cookie': '_adasys=5aeb049b-bdfc-4984-9901-bf3539f577b1',
-    'User-Agent': 'PostmanRuntime/7.26.8'
-}
+from service.load_info import LoadInfo
 
 
-class FiiHandler(Interceptor):
-    def __init__(self):
-        super().__init__()
+class FiiHandler:
+    def __init__(self,
+                 load_info: LoadInfo,
+                 remote_repository: RemoteRepository,
+                 http_repository: HttpRepository):
+        self.logger = logging.getLogger()
+        self.load_info = load_info
+        self.remote_repository = remote_repository
+        self.http_repository = http_repository
 
     def get_fiis(self, headers, args=None):
-        load_fiis = load_fiis_info(headers)
+        load_fiis = self.load_info.load_fiis_info(headers)
         values_fiis = {}
         for fii in load_fiis:
             values_fiis[fii['ticker']] = fii['price']
 
         if args is None:
-            args = request.args
+            args = self.http_repository.get_args()
         liquidez = args.get('metric')
         if liquidez is None:
             liquidez = 250000
@@ -45,7 +45,7 @@ class FiiHandler(Interceptor):
                   f"    and avg_liquidity > {liquidez} " \
                   f"order by " \
                   f"    rank_desv_dy + rank_dy + rank_pvp"
-        fiis = http_repository.execute_select(select_, headers)
+        fiis = self.remote_repository.execute_select(select_, headers)
         rank = 1
         for fii in fiis:
             try:

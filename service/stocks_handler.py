@@ -1,25 +1,26 @@
-from flask import request
+import logging
 
-from repository.HttpRepository import HttpRepository
-from service.Interceptor import Interceptor
-
-http_repository = HttpRepository()
+from csctracker_py_core.repository.http_repository import HttpRepository
+from csctracker_py_core.repository.remote_repository import RemoteRepository
 
 
-class StocksHandler(Interceptor):
-    def __init__(self):
-        super().__init__()
+class StocksHandler:
+    def __init__(self, remote_repository: RemoteRepository, http_repository: HttpRepository):
+        self.logger = logging.getLogger()
+        self.remote_repository = remote_repository
+        self.http_repository = http_repository
+        pass
 
     def get_stocks_basic(self, headers=None):
         select_ = f"select " \
                   f"    ticker, ticker || ' - ' || name as name " \
                   f"from " \
                   f"    stocks "
-        return http_repository.execute_select(select_, headers)
+        return self.remote_repository.execute_select(select_, headers)
 
     def get_stocks(self, type_, headers=None, args=None):
         if args is None:
-            args = request.args
+            args = self.http_repository.get_args()
         liquidez = args.get('avg_liquidity')
         if liquidez is None:
             liquidez = 250000
@@ -63,7 +64,7 @@ class StocksHandler(Interceptor):
                       f"order by " \
                       f"    ev / ebitda, rank_dy + rank_desv_dy + rank_pl + rank_pvp"
 
-        objects = http_repository.execute_select(select_, headers)
+        objects = self.remote_repository.execute_select(select_, headers)
         stocks = []
         rank = 1
         tikers_prefix = []
@@ -92,7 +93,7 @@ class StocksHandler(Interceptor):
                   f"    investment_type_id = {id_}  " \
                   f"order by " \
                   f"    name"
-        objects = http_repository.execute_select(select_, headers)
+        objects = self.remote_repository.execute_select(select_, headers)
         stocks = []
         rank = 1
         for stock in objects:
@@ -108,5 +109,5 @@ class StocksHandler(Interceptor):
                   f"date_value <= '{date}' " \
                   f"and investment_id = {investiment_id} " \
                   f"order by date_value desc limit 1"
-        response = http_repository.execute_select(select_, headers)
+        response = self.remote_repository.execute_select(select_, headers)
         return response[0]

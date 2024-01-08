@@ -1,18 +1,22 @@
+import logging
 from datetime import datetime
 
 import pandas
+from csctracker_py_core.repository.http_repository import HttpRepository
+from csctracker_py_core.repository.remote_repository import RemoteRepository
 
-from repository.HttpRepository import HttpRepository
-from service.Interceptor import Interceptor
-from service.StocksHandler import StocksHandler
-
-http_repository = HttpRepository()
-stock_handler = StocksHandler()
+from service.stocks_handler import StocksHandler
 
 
-class FixedIncome(Interceptor):
-    def __init__(self):
-        super().__init__()
+class FixedIncome:
+    def __init__(self,
+                 stock_handler: StocksHandler,
+                 remote_repository: RemoteRepository,
+                 http_repository: HttpRepository):
+        self.logger = logging.getLogger()
+        self.stock_handler = stock_handler
+        self.remote_repository = remote_repository
+        self.http_repository = http_repository
 
     def get_stock_by_ticker(self, ticker_):
         stock_ = {
@@ -22,12 +26,12 @@ class FixedIncome(Interceptor):
 
     def get_stock(self, movement, headers=None):
         ticker_ = movement['ticker'].upper()
-        stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
+        stock = self.remote_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
         try:
             stock['id']
         except Exception as e:
             ticker_ = self.add_stock(movement, headers)
-            stock = http_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
+            stock = self.remote_repository.get_object("stocks", ["ticker"], {"ticker": ticker_}, headers)
             self.add_stock_price(stock, headers)
         return stock
 
@@ -51,7 +55,7 @@ class FixedIncome(Interceptor):
             'tx_quotient': movement['price'],
             'price': 1
         }
-        http_repository.insert("stocks", investment_tp, headers)
+        self.remote_repository.insert("stocks", investment_tp, headers)
         return investment_tp['ticker']
 
     def add_stock_price(self, stock, headers, date=None):
@@ -62,7 +66,7 @@ class FixedIncome(Interceptor):
         }
         if date is not None:
             stock_price['date_value'] = date
-        http_repository.insert("stocks_prices", stock_price, headers)
+        self.remote_repository.insert("stocks_prices", stock_price, headers)
         try:
 
             try:
@@ -73,15 +77,20 @@ class FixedIncome(Interceptor):
                 "investment_id": stock_price['investment_id'],
                 "date_value": date_value_
             }
-            price_agg = http_repository.get_object_new("stocks_prices_agregated", filter, headers)
+            price_agg = self.remote_repository.get_object(
+                "stocks_prices_agregated",
+                data=filter,
+                headers=headers
+            )
             if price_agg is not None and price_agg['id'] is not None:
                 price_agg['price'] = stock_price['price']
-                http_repository.update("stocks_prices_agregated", ["id"], price_agg, headers)
+                self.remote_repository.update("stocks_prices_agregated", ["id"], price_agg, headers)
             else:
                 stock_price['date_value'] = date_value_
-                http_repository.insert("stocks_prices_agregated", stock_price, headers)
+                self.remote_repository.insert("stocks_prices_agregated", stock_price, headers)
         except Exception as e:
-            print("add_price - fixIncome -> ", stock_price, e)
+            self.logger.info(f"add_price - fixIncome -> {stock_price}")
+            self.logger.exception(e)
             pass
 
     def get_stock_price_by_ticker(self, ticker_, headers, date=None):
@@ -95,7 +104,7 @@ class FixedIncome(Interceptor):
     def get_stock_price(self, movement, headers=None):
         stock_ = self.get_stock(movement, headers)
         date_movement = movement['buy_date']
-        price_obj = stock_handler.get_price(stock_['id'], date_movement, headers)
+        price_obj = self.stock_handler.get_price(stock_['id'], date_movement, headers)
         price = float(price_obj['price'])
         type_ = stock_['tx_type']
         if type_ == "IPCA":
@@ -127,13 +136,13 @@ class FixedIncome(Interceptor):
                     date_price = date.strftime(date_mask)
         else:
             return price_obj
-        http_repository.update("stocks", ["id"], stock_, headers)
-        return stock_handler.get_price(stock_['id'], date_movement, headers)
+        self.remote_repository.update("stocks", ["id"], stock_, headers)
+        return self.stock_handler.get_price(stock_['id'], date_movement, headers)
 
     def get_tax_price(self, tx_type, date, headers=None):
         select_ = f"select * from taxs where " \
                   f"date_value <= '{date}' " \
                   f"and name = '{tx_type}' " \
                   f"order by date_value desc limit 1"
-        objects = http_repository.execute_select(select_, headers)
+        objects = self.remote_repository.execute_select(select_, headers)
         return objects[0]
