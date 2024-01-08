@@ -228,7 +228,7 @@ class AttStocks:
 
                 stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                self.http_repository.update("stocks", ["ticker"], stock_, headers)
+                self.remote_repository.update("stocks", ["ticker"], stock_, headers)
 
                 self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
