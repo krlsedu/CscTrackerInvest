@@ -1,12 +1,12 @@
 import decimal
 import json
 import logging
-import threading
 import time
 
 from csctracker_py_core.repository.http_repository import cross_origin
 from csctracker_py_core.starter import Starter
 from csctracker_py_core.utils.utils import Utils
+from csctracker_queue_scheduler.services.scheduler_service import SchedulerService
 
 from service.att_stocks import AttStocks
 from service.dividend_handler import DividendHandler
@@ -58,6 +58,8 @@ att_stocks = AttStocks(
     remote_repository=remote_repository,
     http_repository=http_repository
 )
+
+SchedulerService.init(40)
 
 
 class Encoder(json.JSONEncoder):
@@ -145,7 +147,11 @@ def get_resume_invest_grafic():
 def add_resume_invest_period():
     headers = http_repository.get_headers()
     args = http_repository.get_args()
-    threading.Thread(target=add_resume_invest_period_tr, args=(args, headers,)).start()
+    args_ = {
+        "args": args,
+        "headers": headers
+    }
+    SchedulerService.put_in_queue(add_resume_invest_period_tr, args_, priority=True)
     return {}, 200, {'Content-Type': 'application/json'}
 
 
@@ -158,7 +164,11 @@ def add_resume_invest_period_tr(args, headers):
 def re_add_resume_invest_period():
     headers = http_repository.get_headers()
     args = http_repository.get_args()
-    threading.Thread(target=re_add_resume_invest_period_tr, args=(args, headers,)).start()
+    args_ = {
+        "args": args,
+        "headers": headers
+    }
+    SchedulerService.put_in_queue(re_add_resume_invest_period_tr, args_, priority=True)
     return {}, 200, {'Content-Type': 'application/json'}
 
 
@@ -241,7 +251,11 @@ def get_investments():
     try:
         headers = http_repository.get_headers()
         args = http_repository.get_args()
-        threading.Thread(target=get_investments_tr, args=(args, headers,)).start()
+        args_ = {
+            "args": args,
+            "headers": headers
+        }
+        SchedulerService.put_in_queue(get_investments_tr, args_, priority=True)
         message = {
             'text': 'Investments update requested',
             'status': 'ok'
@@ -261,7 +275,7 @@ def get_investments_tr(args, headers):
     try:
         time.sleep(1)
         Utils.inform_to_client("Investments refresh requested", "investments", headers,
-                                         "Investments refresh requested")
+                               "Investments refresh requested")
         consolidated = investment_handler.buy_sell_indication(args, headers)
         Utils.inform_to_client("{}", "investments", headers, "Investments refresh completed")
         consolidated = json.dumps(consolidated, cls=Encoder, ensure_ascii=False)
@@ -277,7 +291,10 @@ def att_prices():
     if Utils.work_day():
         logging.getLogger().info('att_prices requested')
         headers = http_repository.get_headers()
-        threading.Thread(target=att_prices_thr, args=(headers,)).start()
+        args_ = {
+            "headers": headers
+        }
+        SchedulerService.put_in_queue(att_prices_thr, args_, priority=True)
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
@@ -285,7 +302,10 @@ def att_prices():
 def att_user_dividends_info():
     logging.getLogger().info('att-dividends-info requested')
     headers = http_repository.get_headers()
-    threading.Thread(target=att_user_dividends_info_tr, args=(headers,)).start()
+    args_ = {
+        "headers": headers
+    }
+    SchedulerService.put_in_queue(att_user_dividends_info_tr, args_, priority=True)
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
@@ -297,7 +317,10 @@ def att_user_dividends_info_tr(headers):
 def att_dividends_info():
     logging.getLogger().info('att-dividends-info requested')
     headers = http_repository.get_headers()
-    threading.Thread(target=att_dividends_info_tr, args=(headers,)).start()
+    args_ = {
+        "headers": headers
+    }
+    SchedulerService.put_in_queue(att_dividends_info_tr, args_, priority=True)
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
@@ -315,7 +338,10 @@ def att_express():
     if (Utils.work_day() and Utils.work_time()) or http_repository.get_headers().get('force') == 'true':
         logging.getLogger().info("att_express requested")
         headers = http_repository.get_headers()
-        threading.Thread(target=att_stocks.att_expres, args=(headers,)).start()
+        args_ = {
+            "headers": headers
+        }
+        SchedulerService.put_in_queue(att_stocks.att_expres, args_, priority=True)
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
@@ -324,7 +350,10 @@ def att_bdr():
     if Utils.work_day():
         logging.getLogger().info("att_bdr requested")
         headers = http_repository.get_headers()
-        threading.Thread(target=att_bdr_thr, args=(headers,)).start()
+        args_ = {
+            "headers": headers
+        }
+        SchedulerService.put_in_queue(att_bdr_thr, args_, priority=True)
 
     return "{}", 200, {'Content-Type': 'application/json'}
 
@@ -338,7 +367,10 @@ def att_bdr_thr(headers):
 def att_full():  # put application's code here
     logging.getLogger().info("att_full requested")
     headers = http_repository.get_headers()
-    threading.Thread(target=att_full_thr, args=(headers,)).start()
+    args_ = {
+        "headers": headers
+    }
+    SchedulerService.put_in_queue(att_full_thr, args_, priority=True)
     return "{}", 200, {'Content-Type': 'application/json'}
 
 
