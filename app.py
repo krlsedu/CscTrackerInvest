@@ -1,5 +1,6 @@
 import decimal
 import json
+import logging
 import threading
 import time
 
@@ -183,7 +184,7 @@ def save_aplly_stock():
         return dumps, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}
-        print(e)
+        logging.getLogger().exception(e)
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
@@ -196,7 +197,7 @@ def save_all_aplly_stock():
         return dumps, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}
-        print(e)
+        logging.getLogger().exception(e)
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
@@ -252,7 +253,7 @@ def get_investments():
             'status': 'error',
             'error': str(e)
         }
-        print(e)
+        logging.getLogger().exception(e)
         return json.dumps(message), 500, {'Content-Type': 'application/json'}
 
 
@@ -267,14 +268,14 @@ def get_investments_tr(args, headers):
         return consolidated, 200, {'Content-Type': 'application/json'}
     except Exception as e:
         msg = {'error': str(e)}
-        print(e)
+        logging.getLogger().exception(e)
         return json.dumps(msg), 500, {'Content-Type': 'application/json'}
 
 
 @app.route('/att-prices', methods=['POST'])
 def att_prices():
     if Utils.work_day():
-        print('att_prices requested')
+        logging.getLogger().info('att_prices requested')
         headers = http_repository.get_headers()
         threading.Thread(target=att_prices_thr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
@@ -282,7 +283,7 @@ def att_prices():
 
 @app.route('/att-user-dividends-info', methods=['POST'])
 def att_user_dividends_info():
-    print('att-dividends-info requested')
+    logging.getLogger().info('att-dividends-info requested')
     headers = http_repository.get_headers()
     threading.Thread(target=att_user_dividends_info_tr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
@@ -294,7 +295,7 @@ def att_user_dividends_info_tr(headers):
 
 @app.route('/att-map-dividends', methods=['POST'])
 def att_dividends_info():
-    print('att-dividends-info requested')
+    logging.getLogger().info('att-dividends-info requested')
     headers = http_repository.get_headers()
     threading.Thread(target=att_dividends_info_tr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
@@ -312,7 +313,7 @@ def att_prices_thr(headers):
 @app.route('/att-express', methods=['POST'])
 def att_express():
     if (Utils.work_day() and Utils.work_time()) or http_repository.get_headers().get('force') == 'true':
-        print("att_express requested")
+        logging.getLogger().info("att_express requested")
         headers = http_repository.get_headers()
         threading.Thread(target=att_stocks.att_expres, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
@@ -321,7 +322,7 @@ def att_express():
 @app.route('/att-bdr', methods=['POST'])
 def att_bdr():
     if Utils.work_day():
-        print("att_bdr requested")
+        logging.getLogger().info("att_bdr requested")
         headers = http_repository.get_headers()
         threading.Thread(target=att_bdr_thr, args=(headers,)).start()
 
@@ -335,7 +336,7 @@ def att_bdr_thr(headers):
 
 @app.route('/att-full', methods=['POST'])
 def att_full():  # put application's code here
-    print("att_full requested")
+    logging.getLogger().info("att_full requested")
     headers = http_repository.get_headers()
     threading.Thread(target=att_full_thr, args=(headers,)).start()
     return "{}", 200, {'Content-Type': 'application/json'}
