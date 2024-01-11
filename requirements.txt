@@ -1,4 +1,4 @@
-csctracker-py-core==24.02.022
+csctracker-py-core==24.02.023
 csctracker-queue-scheduler==24.2.1
 
 html5lib==1.1
