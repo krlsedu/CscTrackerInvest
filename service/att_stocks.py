@@ -81,6 +81,7 @@ class AttStocks:
         else:
             acoes = self.load_info.load_acoes_info()
         count_ = 0
+        tickers_ = []
         for acao in acoes:
             count_ += 1
             try:
@@ -101,12 +102,13 @@ class AttStocks:
 
                 stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                self.investment_handler.att_price_yahoo(stock_, headers)
+                tickers_.append(stock_['ticker'])
 
                 self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
                 self.logger.info(f"Erro ao atualizar {acao['ticker']} - {e}")
                 self.logger.exception(e)
+        self.investment_handler.att_prices_list_yahoo(tickers_, headers)
         return acoes
 
     def att_criptos(self, headers=None, full=False):
@@ -155,6 +157,7 @@ class AttStocks:
 
     def att_brd_expres(self, headers=None):
         bdrs = self.load_bdr_used(headers)
+        tickers_ = []
         for bdr in bdrs:
             try:
                 company_ = bdr['ticker']
@@ -163,10 +166,11 @@ class AttStocks:
 
                 stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                self.investment_handler.att_price_yahoo(stock_, headers)
+                tickers_.append(stock_['ticker'])
                 self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
                 self.logger.info(f"Erro ao atualizar {bdr['ticker']} - {bdr['name']} - {e}")
+        self.investment_handler.att_prices_list_yahoo(tickers_, headers)
         return bdrs
 
     def load_bdr_used(self, headers=None):
@@ -193,6 +197,7 @@ class AttStocks:
         else:
             fiis = self.load_info.load_fiis_info(headers)
         count_ = 0
+        tickers_ = []
         for fii in fiis:
             count_ += 1
             self.logger.info(f"Atualizando o fundo: {fii['ticker']} - {count_}/{len(fiis)}")
@@ -212,11 +217,12 @@ class AttStocks:
 
                 stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
-                self.investment_handler.att_price_yahoo(stock_, headers)
+                tickers_.append(stock_['ticker'])
 
                 self.logger.info(f"{stock_['ticker']} - {stock_['name']} - atualizado")
             except Exception as e:
                 self.logger.info("Erro ao atualizar o fundo: " + fii['ticker'] + " - " + str(e))
+        self.investment_handler.att_prices_list_yahoo(tickers_, headers)
         return fiis
 
     def att_fundos(self, headers=None):

@@ -293,6 +293,30 @@ class InvestmentHandler:
             pass
         return stock_
 
+    def att_prices_list_yahoo(self, stocks_, headers, date=None):
+        range_ = 20
+        stocks_blocks = [stocks_[i:i + range_] for i in range(0, len(stocks_), range_)]
+
+        for stocks in stocks_blocks:
+            try:
+                tickers = ','.join(stocks)
+                prices = self.http_repository.get(
+                    self.get_url_bff() + f"yahoofinance/price-br?tickers={tickers}",
+                    headers=headers
+                ).json()
+                for key in prices.keys():
+                    try:
+                        key_ = key.replace(".SA", "")
+                        stock_ = self.remote_repository.get_object("stocks", data={"ticker": key_}, headers=headers)
+                        stock_['price'] = prices[key]['regularMarketPrice']
+                        self.add_stock_price(stock_, headers, date)
+                        self.remote_repository.update("stocks", ["ticker"], stock_, headers)
+                    except Exception as e:
+                        self.logger.error(f"Erro ao atualizar o preço de {key} -> {e}")
+            except Exception as e:
+                self.logger.error(f"Erro ao consultar os tickers: {tickers} -> {e}")
+                pass
+
     def att_price_yahoo_us(self, stock_, headers, date=None):
         try:
             prices = self.http_repository.get(
@@ -1200,7 +1224,7 @@ class InvestmentHandler:
     def att_stocks_ranks(self, headers=None):
         stocks = self.remote_repository.get_objects("stocks", [], {}, headers)
         stocks = self.calc_ranks(stocks)
-        self.remote_repository.insert("stocks",  stocks, headers)
+        self.remote_repository.insert("stocks", stocks, headers)
 
     def att_stock_price_new(self, headers, daily, stock, stock_, type, price_type="4", reimport=False, data_=None):
         if stock_['prices_imported'] == 'N' or daily or reimport:
