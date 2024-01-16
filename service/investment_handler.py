@@ -294,7 +294,7 @@ class InvestmentHandler:
         return stock_
 
     def att_prices_list_yahoo(self, stocks_, headers, date=None):
-        range_ = 20
+        range_ = 50
         stocks_blocks = [stocks_[i:i + range_] for i in range(0, len(stocks_), range_)]
 
         for stocks in stocks_blocks:
