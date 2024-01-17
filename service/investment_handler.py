@@ -1607,7 +1607,7 @@ class InvestmentHandler:
                 self.remote_repository.insert("user_invest_sell_stock", user_invest_sell_stock, headers)
 
     def last_investment_calc(self, headers=None):
-        user_ = self.remote_repository.get_object("users", [], [], headers)
+        user_ = self.remote_repository.get_object("users", data={}, headers=headers)
         select = f"select * from user_invest_apply where user_id = {user_['id']}" \
                  f" order by apply_date desc limit 1"
         user_invest_apply = self.remote_repository.execute_select(select, headers)[0]
