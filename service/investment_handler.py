@@ -988,31 +988,14 @@ class InvestmentHandler:
             return True
 
     def set_buy_sell_info(self, stock_, stock_ref, types_sum, stocks, headers=None, notify=False):
-        ticker_perc_max_ideal = 0.05
+        min_days_to_sell = 180
         great_gain = 0.07
+        max_rank_to_buy = 20
         great_gain_ = great_gain
-        type_ivest_id_ = stock_['investment_type_id']
-        total_invested = types_sum[type_ivest_id_]
-        filter_ = {
-            'investment_type_id': type_ivest_id_
-        }
-        perc_type_ideal_obj = self.remote_repository.get_object(
-            "perc_ideal_investment_type",
-            ["investment_type_id"],
-            filter_,
-            headers
-        )
-        perc_type_ideal = perc_type_ideal_obj['perc_ideal'] / 100
-        if type_ivest_id_ == 16:
-            total_invested = types_sum[0]
-            ticker_perc_max_ideal = 1
 
         perc_refer = 'ticker_weight_in_all'
         stock_['buy_sell_indicator'] = "neutral"
         stock_ = self.set_stock_weight(stock_, types_sum, stocks)
-        type_weight = stock_['type_weight']
-        type_value_ideal = self.get_ideal_value(types_sum[0], type_weight, perc_type_ideal)
-        max_rank_to_buy = 20
         stock_['ticker_weight_ideal'] = self.get_ticker_weight_ideal(stock_['ticker'], headers)
         if stock_ref is not None:
             try:
@@ -1034,72 +1017,150 @@ class InvestmentHandler:
             else:
                 great_gain = great_gain_
             rank = stock_ref['rank']
+            remove_avg_days = False
+            if 'avg_days' not in stock_:
+                remove_avg_days = True
+                stock_['avg_days'] = 0
             if rank <= max_rank_to_buy:
-                if stock_['monthly_gain'] > great_gain:
+                if (stock_['monthly_gain'] > great_gain
+                        and not self.is_not_in_ideal_perc(stock_, types_sum, True)
+                        and stock_['avg_days'] > min_days_to_sell):
                     stock_['buy_sell_indicator'] = "great-gain"
-                    stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
-                        stock_['monthly_gain']) + " -> Rank: " + str(rank)
-                elif stock_[perc_refer] > ticker_perc_max_ideal or type_weight > perc_type_ideal:
-                    if stock_[perc_refer] > ticker_perc_max_ideal:
-                        sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_[perc_refer])
-                        stock_['recommendation'] = "Sell to equilibrate the ticker " + self.to_brl(sell_rec) \
-                                                   + " -> Rank: " + str(rank)
-                    elif type_weight > perc_type_ideal:
-                        sell_rec = self.get_tot_to_sell(types_sum[0], perc_type_ideal, type_weight)
-                        stock_['recommendation'] = "Sell to equilibrate the type " + self.to_brl(sell_rec) \
-                                                   + " -> Rank: " + str(rank)
+                    stock_['recommendation'] = (
+                            "Favorável à venda - ganho acima do esperado (carência expirada)-> " +
+                            self.to_percent_from_aliq(stock_['monthly_gain']) +
+                            " -> Vender " + self.to_brl(self.get_tot_to_sell(types_sum[0],
+                                                                             stock_['ticker_weight_ideal'],
+                                                                             stock_['ticker_weight_in_all'])) +
+                            " -> Rank: " + str(rank)
+                    )
+                elif self.is_not_in_ideal_perc(stock_, types_sum, True):
+                    stock_['buy_sell_indicator'] = "buy"
+                    stock_['recommendation'] = (
+                            "Favorável à compra " +
+                            " -> Comprar " + self.to_brl(self.get_tot_to_buy(types_sum[0],
+                                                                             stock_['ticker_weight_ideal'],
+                                                                             stock_['ticker_weight_in_all']))
+                            + " -> Rank: " + str(rank))
                 else:
-                    if type_weight < perc_type_ideal:
-                        stock_['buy_sell_indicator'] = "buy"
-                        sell_rec = self.get_tot_to_buy(types_sum[0], ticker_perc_max_ideal, stock_[perc_refer])
-                        if types_sum[type_ivest_id_] + sell_rec > type_value_ideal:
-                            sell_rec = sell_rec - (types_sum[type_ivest_id_] + sell_rec - type_value_ideal)
-                        stock_['recommendation'] = "Max buy recommendation for the ticker " + self.to_brl(sell_rec) \
-                                                   + " -> Rank: " + str(rank)
-
+                    stock_['recommendation'] = "Manter posição atual -> Rank: " + str(rank)
             elif rank > 40:
-                stock_['buy_sell_indicator'] = "sell"
                 if stock_['monthly_gain'] > great_gain:
                     stock_['buy_sell_indicator'] = "great-gain"
-                    stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
-                        stock_['monthly_gain']) + " -> Rank: " + str(rank)
-                elif stock_['ticker_weight_in_all'] > 0:
-                    if rank > 10000:
-                        tiker_prefix = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
-                        stock_['recommendation'] = "Sell all - another " + tiker_prefix + " ticker best ranked "
-                    else:
-                        stock_['recommendation'] = "Sell all - strategy" \
-                                                   + " -> Rank: " + str(rank)
+                    stock_['recommendation'] = (
+                            "Favorável à venda - ganho acima do esperado -> " +
+                            self.to_percent_from_aliq(stock_['monthly_gain']) +
+                            " -> Vender " + self.to_brl(types_sum[0] * stock_['ticker_weight_in_all']) +
+                            " -> Rank: " + str(rank)
+                    )
+                elif self.is_not_in_ideal_perc(stock_, types_sum):
+                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['recommendation'] = (
+                            "Favorável à venda - manter somente o ideal -> " +
+                            self.to_percent_from_aliq(stock_['monthly_gain']) +
+                            " -> Vender " + self.to_brl(self.get_tot_to_sell(types_sum[0],
+                                                                             stock_['ticker_weight_ideal'],
+                                                                             stock_['ticker_weight_in_all'])) +
+                            " -> Rank: " + str(rank)
+                    )
+                elif stock_['avg_days'] > (min_days_to_sell * 3):
+                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['recommendation'] = (
+                            "Favorável à venda - carência de venda 3x expirada -> " +
+                            self.to_percent_from_aliq(stock_['monthly_gain']) +
+                            " -> Vender " + self.to_brl(types_sum[0] * stock_['ticker_weight_in_all']) +
+                            " -> Rank: " + str(rank)
+                    )
+                elif stock_['avg_days'] > 0:
+                    stock_['recommendation'] = "Manter posição atual (Período de carência x3) -> Rank: " + str(rank)
                 else:
-                    if rank > 10000:
-                        tiker_prefix = ''.join([i for i in stock_['ticker'] if not i.isdigit()])
-                        stock_['recommendation'] = "Do not buy - another " + tiker_prefix + " ticker best ranked "
-                    else:
-                        stock_['recommendation'] = "Do not buy" \
-                                                   + " -> Rank: " + str(rank)
+                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['recommendation'] = "Não comprar -> Rank: " + str(rank)
             else:
-                if stock_['monthly_gain'] > great_gain:
+                if (stock_['monthly_gain'] > great_gain
+                        and stock_['avg_days'] > min_days_to_sell):
                     stock_['buy_sell_indicator'] = "great-gain"
-                    stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
-                        stock_['monthly_gain']) + " -> Rank: " + str(rank)
-                elif stock_[perc_refer] > ticker_perc_max_ideal:
-                    sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_[perc_refer])
-                    stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec) \
-                                               + " -> Rank: " + str(rank)
+                    stock_['recommendation'] = (
+                            "Favorável à venda - ganho acima do esperado (carência expirada)-> " +
+                            self.to_percent_from_aliq(stock_['monthly_gain']) +
+                            " -> Vender " + self.to_brl(types_sum[0] * stock_['ticker_weight_in_all']) +
+                            " -> Rank: " + str(rank)
+                    )
+                elif (self.is_not_in_ideal_perc(stock_, types_sum)
+                      and stock_['avg_days'] > (min_days_to_sell * 2)):
+                    stock_['buy_sell_indicator'] = "sell"
+                    stock_['recommendation'] = (
+                            "Favorável à venda - manter somente o ideal (carência x2 expirada)-> " +
+                            self.to_percent_from_aliq(stock_['monthly_gain']) +
+                            " -> Vender " + self.to_brl(self.get_tot_to_sell(types_sum[0],
+                                                                             stock_['ticker_weight_ideal'],
+                                                                             stock_['ticker_weight_in_all'])) +
+                            " -> Rank: " + str(rank)
+                    )
                 else:
-                    stock_['recommendation'] = "Neutral -> Rank: " + str(rank)
+                    stock_['recommendation'] = "Manter posição atual -> Rank: " + str(rank)
+
+            if remove_avg_days:
+                del stock_['avg_days']
 
         else:
             if stock_['monthly_gain'] > great_gain:
                 stock_['buy_sell_indicator'] = "great-gain"
-                stock_['recommendation'] = "Sell all - great gain -> " + self.to_percent_from_aliq(
-                    stock_['monthly_gain'])
-            elif stock_[perc_refer] > ticker_perc_max_ideal:
-                sell_rec = self.get_tot_to_sell(total_invested, ticker_perc_max_ideal, stock_['perc_atu'])
-                stock_['recommendation'] = "Sell to equilibrate " + self.to_brl(sell_rec)
+                stock_['recommendation'] = (
+                        "Favorável à venda - ganho acima do esperado -> " +
+                        self.to_percent_from_aliq(stock_['monthly_gain']) +
+                        " -> Vender " + self.to_brl(types_sum[0] * stock_['ticker_weight_in_all']) +
+                        " -> Não ranqueada nas recomendações"
+                )
+            elif self.is_not_in_ideal_perc(stock_, types_sum):
+                stock_['buy_sell_indicator'] = "sell"
+                stock_['recommendation'] = (
+                        "Favorável à venda - manter somente o ideal -> " +
+                        self.to_percent_from_aliq(stock_['monthly_gain']) +
+                        " -> Vender " + self.to_brl(self.get_tot_to_sell(types_sum[0],
+                                                                         stock_['ticker_weight_ideal'],
+                                                                         stock_['ticker_weight_in_all'])) +
+                        " -> Não ranqueada nas recomendações"
+                )
+            elif stock_['avg_days'] > min_days_to_sell:
+                stock_['buy_sell_indicator'] = "sell"
+                stock_['recommendation'] = (
+                        "Favorável à venda - carência de venda expirada -> " +
+                        self.to_percent_from_aliq(stock_['monthly_gain']) +
+                        " -> Vender " + self.to_brl(types_sum[0] * stock_['ticker_weight_in_all']) +
+                        " -> Não ranqueada nas recomendações"
+                )
+            elif stock_['avg_days'] > 0:
+                stock_['recommendation'] = ("Manter posição atual (Período de carência) "
+                                            "-> Não ranqueada nas recomendações")
             else:
                 stock_['buy_sell_indicator'] = "sell"
-                stock_['recommendation'] = "Sell all - strategy"
+                stock_['recommendation'] = "Não comprar -> Não ranqueada nas recomendações"
+
+    def is_not_in_ideal_perc(self, stock_, types_sum=None, buy=False):
+        if buy:
+            is_not_ideal_ = stock_['ticker_weight_in_all'] < stock_['ticker_weight_ideal']
+        else:
+            is_not_ideal_ = stock_['ticker_weight_in_all'] > stock_['ticker_weight_ideal']
+        if is_not_ideal_ and types_sum is not None:
+            if buy:
+                value = self.get_tot_to_buy(types_sum[0],
+                                            stock_['ticker_weight_ideal'],
+                                            stock_['ticker_weight_in_all'])
+            else:
+                value = self.get_tot_to_sell(types_sum[0],
+                                             stock_['ticker_weight_ideal'],
+                                             stock_['ticker_weight_in_all'])
+            try:
+                price = stock_['price_atu']
+            except:
+                try:
+                    price = stock_['price']
+                except:
+                    return is_not_ideal_
+            if value > price:
+                return True
+        return is_not_ideal_
 
     def get_ticker_weight_ideal(self, ticker, headers=None, rank=20):
         try:
