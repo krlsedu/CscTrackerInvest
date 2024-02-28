@@ -754,30 +754,16 @@ class InvestmentHandler:
 
     def add_total_daily_gain(self, infos, headers=None):
         filter_ = {
-            'user_id': self.remote_repository.get_user(headers)['id'],
-            'movement_type': 1
+            'user_id': self.remote_repository.get_user(headers)['id']
         }
-        movements = self.remote_repository.get_objects("user_stocks_movements",
-                                                       ["user_id", "movement_type"],
-                                                       filter_,
-                                                       headers)
+        movements = self.remote_repository.get_objects("user_stocks",
+                                                       data=filter_,
+                                                       headers=headers)
         days = 0
         quantity = 0
         for movement in movements:
-            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
-            delta = datetime.now().astimezone(tz=timezone.utc) - date_
-            days += delta.days * (movement['quantity'] * movement['price'])
-            quantity += (movement['quantity'] * movement['price'])
-        filter_['movement_type'] = 2
-        movements = self.remote_repository.get_objects("user_stocks_movements",
-                                                       ["user_id", "movement_type"],
-                                                       filter_,
-                                                       headers)
-        for movement in movements:
-            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
-            delta = datetime.now().astimezone(tz=timezone.utc) - date_
-            days -= delta.days * (movement['quantity'] * movement['price'])
-            quantity -= (movement['quantity'] * movement['price'])
+            days += movement['avg_days'] * movement['quantity'] * movement['avg_price']
+            quantity += movement['quantity'] * movement['avg_price']
 
         avg_days = days / quantity
         if avg_days is None or avg_days < 1:
@@ -838,6 +824,13 @@ class InvestmentHandler:
         avg_days = days / stock['quantity']
         if avg_days is None or avg_days < 1:
             avg_days = 1
+        filter_ = {
+            'investment_id': stock_['id'],
+        }
+        user_stock_ = self.remote_repository.get_object("user_stocks", data=filter_, headers=headers)
+        if user_stock_['avg_days'] != avg_days:
+            user_stock_['avg_days'] = avg_days
+            self.remote_repository.insert("user_stocks", user_stock_, headers)
 
         stock['daily_gain'] = self.root_n(stock['gain'] + 1, avg_days) - 1
         stock['daily_dyr'] = self.root_n(stock['dyr'] + 1, avg_days) - 1
