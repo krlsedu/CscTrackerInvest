@@ -809,25 +809,31 @@ class InvestmentHandler:
         filter_ = {
             'investment_id': stock_['id'],
             'user_id': self.remote_repository.get_user(headers)['id'],
-            'movement_type': 1,
-            'active': 'S'
+            'movement_type': 1
         }
-        movements = self.remote_repository.get_objects("user_stocks_movements",
-                                                       ["investment_id", "user_id", "movement_type", "active"],
-                                                       filter_, headers)
-        days = 0
-        for movement in movements:
-            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
-            delta = datetime.now().astimezone(tz=timezone.utc) - date_
-            days += delta.days * movement['quantity']
+        buy_movements = self.remote_repository.get_objects("user_stocks_movements",
+                                                           data=filter_, headers=headers)
         filter_['movement_type'] = 2
-        movements = self.remote_repository.get_objects("user_stocks_movements",
-                                                       ["investment_id", "user_id", "movement_type", "active"],
-                                                       filter_, headers)
-        for movement in movements:
+        sell_movements = self.remote_repository.get_objects("user_stocks_movements",
+                                                            data=filter_, headers=headers)
+        days = 0
+        buy_movements = sorted(buy_movements, key=lambda x: x['date'])
+        for movement in buy_movements:
             date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
-            delta = datetime.now().astimezone(tz=timezone.utc) - date_
-            days -= delta.days * movement['quantity']
+            now_ = datetime.now().astimezone(tz=timezone.utc)
+            quantity_ = movement['quantity']
+            for sell_movement in sell_movements:
+                quantity_sell_ = sell_movement['quantity']
+                if quantity_ > quantity_sell_ > 0 and quantity_ > 0:
+                    sell_movement['quantity'] = 0
+                    quantity_ = quantity_ - quantity_sell_
+                elif quantity_ > 0 and quantity_sell_ > 0:
+                    quantity_sell_ = quantity_sell_ - quantity_
+                    sell_movement['quantity'] = quantity_sell_
+                    quantity_ = 0
+
+            delta = now_ - date_
+            days += delta.days * quantity_
 
         avg_days = days / stock['quantity']
         if avg_days is None or avg_days < 1:
