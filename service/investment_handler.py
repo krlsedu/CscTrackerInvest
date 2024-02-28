@@ -1158,8 +1158,7 @@ class InvestmentHandler:
                     price = stock_['price']
                 except:
                     return is_not_ideal_
-            if value > price:
-                return True
+            return value > price
         return is_not_ideal_
 
     def get_ticker_weight_ideal(self, ticker, headers=None, rank=20):
