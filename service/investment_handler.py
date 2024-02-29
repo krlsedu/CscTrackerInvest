@@ -762,6 +762,11 @@ class InvestmentHandler:
         days = 0
         quantity = 0
         for movement in movements:
+            # FIXME - ajustar para considerar os dias de cada compra,
+            #   e assim tem um geral desde o primeiro dia de investimento
+            #   para isso, pegar a data do movimento e a data do cálculo,
+            #   além de pegar o preço para que compute corretamente os pesos, mesmo de ativos vendidos
+            #   Ainda, deve ser pega a lista de movimentos de compra ao invés dos ativos consolidados
             days += movement['avg_days'] * movement['quantity'] * movement['avg_price']
             quantity += movement['quantity'] * movement['avg_price']
 
