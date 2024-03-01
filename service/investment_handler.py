@@ -754,21 +754,21 @@ class InvestmentHandler:
 
     def add_total_daily_gain(self, infos, headers=None):
         filter_ = {
-            'user_id': self.remote_repository.get_user(headers)['id']
+            'user_id': self.remote_repository.get_user(headers)['id'],
+            'movement_type': 1
         }
-        movements = self.remote_repository.get_objects("user_stocks",
+        movements = self.remote_repository.get_objects("user_stocks_movements",
                                                        data=filter_,
                                                        headers=headers)
         days = 0
         quantity = 0
         for movement in movements:
-            # FIXME - ajustar para considerar os dias de cada compra,
-            #   e assim tem um geral desde o primeiro dia de investimento
-            #   para isso, pegar a data do movimento e a data do cálculo,
-            #   além de pegar o preço para que compute corretamente os pesos, mesmo de ativos vendidos
-            #   Ainda, deve ser pega a lista de movimentos de compra ao invés dos ativos consolidados
-            days += movement['avg_days'] * movement['quantity'] * movement['avg_price']
-            quantity += movement['quantity'] * movement['avg_price']
+            date_ = datetime.strptime(movement['date'], '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=timezone.utc)
+            now_ = datetime.now().astimezone(tz=timezone.utc)
+            delta = now_ - date_
+
+            days += delta.days * movement['quantity'] * movement['price']
+            quantity += movement['quantity'] * movement['price']
 
         avg_days = days / quantity
         if avg_days is None or avg_days < 1:
