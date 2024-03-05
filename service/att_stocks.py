@@ -31,7 +31,6 @@ class AttStocks:
         self.remote_repository = remote_repository
         self.http_repository = http_repository
 
-
     def att_expres(self, headers=None):
         self.logger.info("Atualizando indices")
         self.att_indices(headers)
@@ -261,7 +260,7 @@ class AttStocks:
             stock_ = stock
 
             self.logger.info(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
-                  f"{counter}/{len(my_stocks)}")
+                             f"{counter}/{len(my_stocks)}")
             self.dividends_map_info(headers, stock_)
 
     def att_user_dividends_info(self, headers):
@@ -272,7 +271,7 @@ class AttStocks:
             stock_ = self.remote_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
             # generate log of progress of stock processing with overal progress
             self.logger.info(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
-                  f"{counter}/{len(my_stocks)}")
+                             f"{counter}/{len(my_stocks)}")
             if (stock_['investment_type_id'] == 1
                     or stock_['investment_type_id'] == 2
                     or stock_['investment_type_id'] == 4):
@@ -282,44 +281,60 @@ class AttStocks:
 
     def dividends_info(self, headers):
         my_stocks = self.remote_repository.get_objects("user_stocks", [], {}, headers)
+        counter = 0
         for stock in my_stocks:
-            stock_ = self.remote_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
-            dividends_map = self.remote_repository.get_objects("dividends_map", ["investment_id"],
-                                                        {"investment_id": stock_['id']}, headers)
-            for dividend_map in dividends_map:
-                try:
-                    value_per_quote = dividend_map['value_per_quote']
-                    if dividend_map['type_id'] == 2:
-                        value_per_quote = value_per_quote * 0.85
+            try:
+                counter += 1
+                stock_ = self.remote_repository.get_object("stocks", ["id"], {"id": stock['investment_id']}, headers)
+                self.logger.info(f"Atualizando dividendos de {stock_['ticker']} - {stock_['name']} - "
+                                 f"{counter}/{len(my_stocks)}")
+                dividends_map = self.remote_repository.get_objects("dividends_map", ["investment_id"],
+                                                                   {"investment_id": stock_['id']}, headers)
+                for dividend_map in dividends_map:
+                    try:
+                        value_per_quote = dividend_map['value_per_quote']
+                        if dividend_map['type_id'] == 2:
+                            value_per_quote = value_per_quote * 0.85
 
-                    select = f"select " \
-                             f"coalesce(sum(case when movement_type = 1 then quantity else -quantity end),0) as quantity " \
-                             f"from user_stocks_movements where investment_id = {dividend_map['investment_id']} " \
-                             f"and date <= '{dividend_map['date_with']} 23:59:59'"
-                    quantity = self.remote_repository.execute_select(select, headers)[0]['quantity']
-                    if quantity > 0:
-                        dividend = {"dividends_map_id": dividend_map['id']}
-                        dividend = self.remote_repository.get_object("dividends", ["dividends_map_id"],
-                                                              dividend, headers)
-                        if dividend is None:
-                            dividend = {"investment_id": stock_['id'],
-                                        "dividends_map_id": dividend_map['id'],
-                                        "date_payment": dividend_map['date_payment'],
-                                        "value_per_quote": value_per_quote,
-                                        "type_id": dividend_map['type_id'],
-                                        "active": "S",
-                                        "quantity": quantity,
-                                        }
-                            self.remote_repository.insert("dividends", dividend, headers)
-                        else:
-                            dividend['value_per_quote'] = value_per_quote
-                            dividend['quantity'] = quantity
-                            dividend['date_payment'] = dividend_map['date_payment']
-                            self.remote_repository.update("dividends", ["id"], dividend, headers)
-                except Exception as e:
-                    self.logger.info("Erro ao atualizar dividendos de " + stock_['ticker'])
-                    self.logger.exception(e)
-                    pass
+                        date_with_ = dividend_map['date_with']
+                        if date_with_.startswith('00'):
+                            date_with_ = '20' + date_with_[2:]
+                        if len(date_with_) == 8:
+                            date_with_ = '20' + date_with_
+                        select = f"select " \
+                                 f"coalesce(sum(case when movement_type = 1 then quantity else -quantity end),0) as quantity " \
+                                 f"from user_stocks_movements where investment_id = {dividend_map['investment_id']} " \
+                                 f"and date <= '{date_with_} 23:59:59'"
+                        quantity = self.remote_repository.execute_select(select, headers)[0]['quantity']
+                        if quantity > 0:
+                            dividend = {"dividends_map_id": dividend_map['id']}
+                            dividend = self.remote_repository.get_object("dividends", ["dividends_map_id"],
+                                                                         dividend, headers)
+                            if dividend is None:
+                                dividend = {"investment_id": stock_['id'],
+                                            "dividends_map_id": dividend_map['id'],
+                                            "date_payment": dividend_map['date_payment'],
+                                            "value_per_quote": value_per_quote,
+                                            "type_id": dividend_map['type_id'],
+                                            "active": "S",
+                                            "quantity": quantity,
+                                            }
+                                self.remote_repository.insert("dividends", dividend, headers)
+                            else:
+                                if (dividend['value_per_quote'] != value_per_quote
+                                        or dividend['quantity'] != quantity
+                                        or dividend['date_payment'] != dividend_map['date_payment']):
+                                    dividend['value_per_quote'] = value_per_quote
+                                    dividend['quantity'] = quantity
+                                    dividend['date_payment'] = dividend_map['date_payment']
+                                    self.remote_repository.update("dividends", ["id"], dividend, headers)
+                    except Exception as e:
+                        self.logger.info("Erro ao atualizar dividendos de " + stock_['ticker'])
+                        self.logger.exception(e)
+                        pass
+            except Exception as e:
+                self.logger.info("Erro ao atualizar dividendos de " + stock_['ticker'])
+                self.logger.exception(e)
 
     def dividends_map_info(self, headers, stock_):
         if stock_['investment_type_id'] == 1 or \
@@ -381,14 +396,21 @@ class AttStocks:
                         else:
                             _type = 1
                         date_with = self.convert_pt_br_date_to_db_date(date_with)
-                        date_pay = self.convert_pt_br_date_to_db_date(date_pay)
+                        if date_with.startswith('00'):
+                            date_with = date_with.replace('00', '20')
+                        try:
+                            date_pay = self.convert_pt_br_date_to_db_date(date_pay)
+                            if date_pay.startswith('00'):
+                                date_pay = date_pay.replace('00', '20')
+                        except Exception as e:
+                            date_pay = datetime.now().strftime('%Y') + '-12-31'
                         dividend_map = {"investment_id": stock_['id'],
                                         "date_with": date_with,
                                         "date_payment": date_pay,
                                         "type_id": _type}
                         dividend_map = self.remote_repository.get_object("dividends_map", ["investment_id", "date_with",
-                                                                                    "date_payment", "type_id"],
-                                                                  dividend_map, headers)
+                                                                                           "date_payment", "type_id"],
+                                                                         dividend_map, headers)
                         if dividend_map is None:
                             dividend_map = {"investment_id": stock_['id'],
                                             "date_with": date_with,
@@ -397,12 +419,13 @@ class AttStocks:
                                             "value_per_quote": value}
                             self.remote_repository.insert("dividends_map", dividend_map, headers)
                         else:
-                            dividend_map['value_per_quote'] = value
-                            self.remote_repository.update("dividends_map", ["id"],
-                                                   dividend_map, headers)
+                            if dividend_map['value_per_quote'] != value:
+                                dividend_map['value_per_quote'] = value
+                                self.remote_repository.update("dividends_map", ["id"],
+                                                              dividend_map, headers)
 
             except Exception as e:
-                self.logger.info("Erro ao atualizar dividendos de " + stock_['ticker'])
+                self.logger.info("Erro ao inserir mapa de dividendos de " + stock_['ticker'])
                 self.logger.exception(e)
                 pass
 
