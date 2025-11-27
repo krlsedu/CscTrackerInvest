@@ -197,7 +197,7 @@ class InvestmentHandler:
 
     def add_price(self, price, headers=None):
         try:
-            if price['price'] is not None:
+            if price['price'] is not None and price['price'] != 0:
                 self.remote_repository.insert("stocks_prices", price, headers)
                 try:
                     try:
