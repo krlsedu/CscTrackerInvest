@@ -2,3 +2,4 @@ csctracker-py-core==24.6.4
 
 html5lib==1.1
 pandas==1.3.2
+numpy<2.0.0
