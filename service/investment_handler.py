@@ -510,7 +510,7 @@ class InvestmentHandler:
                                                                         stock_consolidated['total_value_invest']))
 
                         if price_ant is not None:
-                            perc_gain_ant = float(price_ant['price']) - float(stock_consolidated['avg_price'])
+                            perc_gain_ant = (float(price_ant['price']) / float(stock_consolidated['avg_price'])) - 1
 
                             stock_consolidated['total_value_ant'] = float(stock_consolidated['total_value_invest']) + \
                                                                     float(
