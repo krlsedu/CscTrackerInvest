@@ -502,7 +502,7 @@ class InvestmentHandler:
                     stock_consolidated['avg_price'] = stock['avg_price']
                     stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
                     if stock_consolidated['investment_type_id'] == 16 or stock_consolidated['investment_type_id'] == 15:
-                        perc_gain = float(stock_consolidated['price_atu']) - float(stock_consolidated['avg_price'])
+                        perc_gain = float(stock_consolidated['price_atu']) / float(stock_consolidated['avg_price']) - 1
 
                         stock_consolidated['total_value_atu'] = float(stock_consolidated['total_value_invest']) + \
                                                                 float(
