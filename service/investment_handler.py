@@ -754,7 +754,8 @@ class InvestmentHandler:
 
     def add_total_daily_gain(self, infos, headers=None):
         filter_ = {
-            'user_id': self.remote_repository.get_user(headers)['id']
+            'user_id': self.remote_repository.get_user(headers)['id'],
+            'movement_type': 1
         }
         movements = self.remote_repository.get_objects("user_stocks_movements",
                                                        data=filter_,
@@ -766,25 +767,8 @@ class InvestmentHandler:
             now_ = datetime.now().astimezone(tz=timezone.utc)
             delta = now_ - date_
 
-            financial_volume = movement['quantity'] * movement['price']
-
-            if movement['movement_type'] == 1: # COMPRA
-                # Soma no numerador (peso do tempo)
-                days += delta.days * financial_volume
-                # Soma no denominador (volume total)
-                quantity += financial_volume
-
-            elif movement['movement_type'] == 2: # VENDA
-                # O PULO DO GATO:
-                # Na venda, a gente NÃO mexe no 'days' (numerador),
-                # porque o tempo que esse dinheiro trabalhou é mérito teu e faz parte do lucro acumulado.
-                # Mas a gente ABATE do 'quantity' (denominador) para não duplicar o dinheiro se tu reinvestir.
-                quantity -= financial_volume
-
-        # Proteção para não dividir por zero ou negativo (caso tu tenha vendido tudo e sacado)
-        if quantity <= 0:
-            # Fallback: Se o fluxo liquido for zero, usa o valor atual investido como proxy
-            quantity = infos['resume']['total_value_invest']
+            days += delta.days * movement['quantity'] * movement['price']
+            quantity += movement['quantity'] * movement['price']
 
         avg_days = days / quantity
         if avg_days is None or avg_days < 1:
