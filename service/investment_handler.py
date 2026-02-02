@@ -1293,21 +1293,24 @@ class InvestmentHandler:
     def att_stock_price_new(self, headers, daily, stock, stock_, type, price_type="4", reimport=False, data_=None):
         if stock_['prices_imported'] == 'N' or daily or reimport:
             if type == 'fundo' and not daily or type == 'fundo' and reimport:
-                company_ = stock_['url_infos']
-                company_ = company_.replace('/fundos-de-investimento/', '')
-                infos = self.http_repository.get_prices_fundos(company_, price_type == "1")
-                datas = infos['data']['chart']['category']
-                values = infos['data']['chart']['series']['fundo']
-                for i in range(len(datas)):
-                    data = datas[i]
-                    data = datetime.strptime(data, '%d/%m/%y').strftime("%Y-%m-%d")
-                    can_insert = True
-                    if data_ is not None:
-                        can_insert = data > data_
-                    price = values[i]['price']
-                    stock_['price'] = price
-                    if can_insert:
-                        self.add_stock_price(stock_, headers, data)
+                try:
+                    company_ = stock_['url_infos']
+                    company_ = company_.replace('/fundos-de-investimento/', '')
+                    infos = self.http_repository.get_prices_fundos(company_, price_type == "1")
+                    datas = infos['data']['chart']['category']
+                    values = infos['data']['chart']['series']['fundo']
+                    for i in range(len(datas)):
+                        data = datas[i]
+                        data = datetime.strptime(data, '%d/%m/%y').strftime("%Y-%m-%d")
+                        can_insert = True
+                        if data_ is not None:
+                            can_insert = data > data_
+                        price = values[i]['price']
+                        stock_['price'] = price
+                        if can_insert:
+                            self.add_stock_price(stock_, headers, data)
+                except Exception as e:
+                    self.logger.error(f"Error importing prices for {stock_['ticker']}: {e}")
                 pass
             else:
                 infos = self.http_repository.get_prices(stock_['ticker'], type, daily, price_type)
