@@ -185,7 +185,7 @@ class AttStocks:
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
         bdrs = self.remote_repository.execute_select(
             f"select {ks} from stocks "
-            f"where investment_type_id = {investment_type_id} "
+            f"where investment_type_id = {investment_type_id} or investment_type_real_id = {investment_type_id}"
             "   and exists( select 1 from user_stocks where user_stocks.investment_id = stocks.id and quantity > 0)",
             headers)
         return bdrs
@@ -272,9 +272,10 @@ class AttStocks:
             # generate log of progress of stock processing with overal progress
             self.logger.info(f"Atualizando mapa de dividendos de {stock_['ticker']} - {stock_['name']} - "
                              f"{counter}/{len(my_stocks)}")
-            if (stock_['investment_type_id'] == 1
-                    or stock_['investment_type_id'] == 2
-                    or stock_['investment_type_id'] == 4):
+            investment_type_id_ = stock_['investment_type_real_id'] if stock_['investment_type_real_id'] else stock_['investment_type_id']
+            if (investment_type_id_ == 1
+                    or investment_type_id_ == 2
+                    or investment_type_id_ == 4):
                 self.dividends_map_info(headers, stock_)
 
         self.dividends_info(headers)
@@ -337,18 +338,19 @@ class AttStocks:
                 self.logger.exception(e)
 
     def dividends_map_info(self, headers, stock_):
-        if stock_['investment_type_id'] == 1 or \
-                stock_['investment_type_id'] == 4 or \
-                stock_['investment_type_id'] == 2:
+        investment_type_id_ = stock_['investment_type_real_id'] if stock_['investment_type_real_id'] else stock_['investment_type_id']
+        if investment_type_id_ == 1 or \
+                investment_type_id_ == 4 or \
+                investment_type_id_ == 2:
             url = None
             status_invest = True
-            if stock_['investment_type_id'] == 1:
+            if investment_type_id_ == 1:
                 # url = f"https://statusinvest.com.br/acoes/{stock_['ticker']}"
-                url = f"https://investidor10.com.br/acoes/{stock_['ticker']}"
+                url = f"https://investidor10.com.br{stock_['url_infos']}"
                 status_invest = False
-            elif stock_['investment_type_id'] == 4:
+            elif investment_type_id_ == 4:
                 url = f"https://statusinvest.com.br/bdrs/{stock_['ticker']}"
-            elif stock_['investment_type_id'] == 2:
+            elif investment_type_id_ == 2:
                 # url = f"https://statusinvest.com.br/fundos-imobiliarios/{stock_['ticker']}"
                 url = f"https://investidor10.com.br/fiis/{stock_['ticker']}"
                 status_invest = False
@@ -389,7 +391,7 @@ class AttStocks:
                             finded = True
                     if finded:
                         if _type == 'Rendimento' or _type == 'REND. TRIBUTADO' or (
-                                _type == 'Dividendos' and stock_['investment_type_id'] == 2):
+                                _type == 'Dividendos' and investment_type_id_ == 2):
                             _type = 3
                         elif _type == 'Juros sobre Capital Próprio' or _type == 'JSCP':
                             _type = 2

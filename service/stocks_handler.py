@@ -83,7 +83,7 @@ class StocksHandler:
 
     def get_founds(self, id_, headers=None):
         keys = ['ticker', 'price', 'dy', 'last_dividend', 'pvp', 'segment', 'pl', 'name', 'investment_type_id',
-                'url_infos']
+                'url_infos',  'investment_type_real_id']
         ks = str(keys).replace("[", "").replace("]", "").replace("'", "")
         select_ = f"select " \
                   f"    {ks} " \

@@ -444,14 +444,15 @@ class InvestmentHandler:
                                                                                                     False,
                                                                                                     headers,
                                                                                                     2)
+                    investment_type_id_ = stock_['investment_type_real_id'] if stock_['investment_type_real_id'] else investment_type['id']
                     if att_price_:
-                        if investment_type['id'] == 100:
+                        if investment_type['id'] == 100 and stock_['investment_type_real_id'] is None:
                             self.att_price_yahoo_us(stock_, headers)
                         # else:
                         #     if investment_type['id'] != 16:
                         #         self.att_price_yahoo(stock_, headers)
 
-                    if investment_type['id'] == 16:
+                    if investment_type['id'] == 16 and stock_['investment_type_real_id'] is None:
                         stock_price = self.fixed_income_handler.get_stock_price_by_ticker(
                             ticker_,
                             headers,
@@ -477,13 +478,13 @@ class InvestmentHandler:
                         dt_prc_req = (datetime.now() - timedelta(1)).strftime('%Y-%m-%d')
                         if dt_prc_ant < \
                                 dt_prc_req:
-                            if investment_type['id'] == 15:
+                            if investment_type_id_ == 15:
                                 self.att_stock_price_new(headers, False, stock_, stock_, "fundo", "1", True, dt_prc_ant)
-                            elif investment_type['id'] == 1:
+                            elif investment_type_id_ == 1:
                                 self.att_stock_price_new(headers, False, stock_, stock_, "acao", "1", True, dt_prc_ant)
-                            elif investment_type['id'] == 2:
+                            elif investment_type_id_ == 2:
                                 self.att_stock_price_new(headers, False, stock_, stock_, "fii", "1", True, dt_prc_ant)
-                            elif investment_type['id'] == 4:
+                            elif investment_type_id_ == 4:
                                 self.att_stock_price_new(headers, False, stock_, stock_, "bdr", "1", True, dt_prc_ant)
                             pass
 
@@ -501,7 +502,7 @@ class InvestmentHandler:
                     stock_consolidated['quantity'] = stock['quantity']
                     stock_consolidated['avg_price'] = stock['avg_price']
                     stock_consolidated['total_value_invest'] = stock['quantity'] * stock['avg_price']
-                    if stock_consolidated['investment_type_id'] == 16 or stock_consolidated['investment_type_id'] == 15:
+                    if (stock_consolidated['investment_type_id'] == 16 or stock_consolidated['investment_type_id'] == 15) and stock_['investment_type_real_id'] is None:
                         perc_gain = float(stock_consolidated['price_atu']) / float(stock_consolidated['avg_price']) - 1
 
                         stock_consolidated['total_value_atu'] = float(stock_consolidated['total_value_invest']) + \
@@ -1802,7 +1803,7 @@ class InvestmentHandler:
                 headers=headers
             )
 
-            if stock_['investment_type_id'] == 16:
+            if stock_['investment_type_id'] == 16 and stock_['investment_type_real_id'] is None:
                 movement = {
                     "quantity": apply_stock['value_or_cotas'],
                     "ticker": apply_stock['ticker'],

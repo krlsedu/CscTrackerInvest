@@ -1,4 +1,4 @@
-csctracker-py-core==24.6.4
+csctracker-py-core==26.30.1
 
 html5lib==1.1
 pandas==1.3.2
