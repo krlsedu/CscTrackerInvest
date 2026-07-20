@@ -689,6 +689,10 @@ class InvestmentHandler:
             except:
                 pass
             try:
+                del recomendation['investment_type_real_id']
+            except:
+                pass
+            try:
                 self.remote_repository.insert("user_recomendations", recomendation, headers)
             except Exception as e:
                 self.logger.exception(e)
