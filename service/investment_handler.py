@@ -11,6 +11,7 @@ from csctracker_py_core.models.emuns.config import Config
 from csctracker_py_core.repository.http_repository import HttpRepository
 from csctracker_py_core.repository.remote_repository import RemoteRepository
 from csctracker_py_core.utils.configs import Configs
+from csctracker_py_core.utils.request_info import RequestInfo
 from csctracker_py_core.utils.utils import Utils
 
 from service.dividend_handler import DividendHandler
@@ -110,14 +111,14 @@ class InvestmentHandler:
                         del movement['venc_date']
                     except:
                         pass
-                    if movement['movement_type'] == 2:
-                        self.add_profit_loss(profit_loss_value, movement, headers)
                     self.remote_repository.update("user_stocks", ["user_id", "investment_id"], user_stock, headers)
                 try:
                     del movement['tx_type']
                 except:
                     pass
-                self.remote_repository.insert("user_stocks_movements", movement, headers)
+                inserted_movement = self.remote_repository.insert("user_stocks_movements", movement, headers)
+                if movement_type['to_balance'] and movement['movement_type'] == 2:
+                    self.add_profit_loss(profit_loss_value, inserted_movement, headers)
             else:
                 if movement_type['to_balance']:
                     stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
@@ -156,14 +157,111 @@ class InvestmentHandler:
             date = movement['date']
         except:
             date = datetime.now().strftime('%Y-%m-%d')
+
+        request_id = RequestInfo.get_correlation_id()
+
         profit_loss = {
             "user_id": movement['user_id'],
             "investment_id": movement['investment_id'],
             "value": profit_loss_value,
             "quantity": movement['quantity'],
-            "date_sell": date
+            "date_sell": date,
+            "request_id": request_id,
         }
         self.remote_repository.insert("profit_loss", profit_loss, headers)
+        try:
+            try:
+                stock = self.remote_repository.get_object("stocks", ["id"], {"id": movement['investment_id']}, headers)
+            except Exception as e:
+                self.logger.exception(e)
+                stock = {}
+
+            if not stock:
+                stock = {}
+
+            ticker = stock.get('ticker', 'UNKNOWN')
+            stock_name = stock.get('name', 'UNKNOWN')
+
+            tx_key = f"{ticker}_{date}_{movement['quantity']}_{movement['investment_id']}_{request_id}"
+
+            qty = float(movement.get('quantity', 0))
+            price = float(movement.get('price', 0))
+            pl_qty = float(profit_loss.get('quantity', 0))
+            pl_val = float(profit_loss.get('value', 0))
+            movement_date = movement.get('date', date)
+
+            try:
+                qty_str = str(int(pl_qty)) if pl_qty.is_integer() else str(pl_qty)
+            except:
+                qty_str = str(pl_qty)
+
+            try:
+                price_str = str(int(price)) if price.is_integer() else str(price)
+            except:
+                price_str = str(price)
+
+            resgate_value = round((qty * price) - (pl_qty * pl_val), 2)
+            resgate_tx = {
+                "date": date,
+                "type": "income",
+                "value": resgate_value,
+                "name": ticker,
+                "package_name": None,
+                "app_name": "Nubank",
+                "text": f"Resgate de {qty_str} cotas de {stock_name} no preço de venda de {price_str} Reais",
+                "user_id": movement['user_id'],
+                "last_update": movement_date,
+                "category": "Resgate",
+                "key": tx_key,
+                "copy": False,
+                "is_installment": "N",
+                "installment_id": None,
+                "request_id": request_id,
+            }
+            self.remote_repository.insert("transactions", resgate_tx, headers)
+
+            if profit_loss_value > 0:
+                profit_value = round(pl_qty * pl_val, 4)
+                lucro_tx = {
+                    "date": date,
+                    "type": "income",
+                    "value": profit_value,
+                    "name": ticker,
+                    "package_name": None,
+                    "app_name": "Nubank",
+                    "text": f"Lucro referente a venda de {qty_str} cotas de {stock_name} no preço de venda de {price_str} Reais",
+                    "user_id": movement['user_id'],
+                    "last_update": movement_date,
+                    "category": "Lucro investimentos",
+                    "key": tx_key,
+                    "copy": False,
+                    "request_id": request_id,
+                    "is_installment": "N",
+                    "installment_id": None
+                }
+                self.remote_repository.insert("transactions", lucro_tx, headers)
+            elif profit_loss_value < 0:
+                loss_value = round(pl_qty * pl_val, 4) * -1
+                prejuizo_tx = {
+                    "date": date,
+                    "type": "outcome",
+                    "value": loss_value,
+                    "name": ticker,
+                    "package_name": None,
+                    "app_name": "Nubank",
+                    "text": f"Prejuízo referente a venda de {qty_str} cotas de {stock_name} no preço de venda de {price_str} Reais",
+                    "user_id": movement['user_id'],
+                    "last_update": movement_date,
+                    "category": "Prejuízo investimentos",
+                    "key": tx_key,
+                    "copy": False,
+                    "request_id": request_id,
+                    "is_installment": "N",
+                    "installment_id": None
+                }
+                self.remote_repository.insert("transactions", prejuizo_tx, headers)
+        except Exception as e:
+            self.logger.error(f"Erro ao inserir informações financeiras da venda: {e}")
 
     def get_stock(self, ticker_, headers=None):
         ticker_ = ticker_.upper()
