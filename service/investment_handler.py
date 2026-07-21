@@ -161,7 +161,6 @@ class InvestmentHandler:
         request_id = RequestInfo.get_correlation_id()
 
         profit_loss = {
-            "user_id": movement['user_id'],
             "investment_id": movement['investment_id'],
             "value": profit_loss_value,
             "quantity": movement['quantity'],
@@ -209,7 +208,6 @@ class InvestmentHandler:
                 "package_name": None,
                 "app_name": "Nubank",
                 "text": f"Resgate de {qty_str} cotas de {stock_name} no preço de venda de {price_str} Reais",
-                "user_id": movement['user_id'],
                 "last_update": movement_date,
                 "category": "Resgate",
                 "key": tx_key,
@@ -230,7 +228,6 @@ class InvestmentHandler:
                     "package_name": None,
                     "app_name": "Nubank",
                     "text": f"Lucro referente a venda de {qty_str} cotas de {stock_name} no preço de venda de {price_str} Reais",
-                    "user_id": movement['user_id'],
                     "last_update": movement_date,
                     "category": "Lucro investimentos",
                     "key": tx_key,
@@ -250,7 +247,6 @@ class InvestmentHandler:
                     "package_name": None,
                     "app_name": "Nubank",
                     "text": f"Prejuízo referente a venda de {qty_str} cotas de {stock_name} no preço de venda de {price_str} Reais",
-                    "user_id": movement['user_id'],
                     "last_update": movement_date,
                     "category": "Prejuízo investimentos",
                     "key": tx_key,
