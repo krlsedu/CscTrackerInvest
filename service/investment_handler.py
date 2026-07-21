@@ -111,14 +111,13 @@ class InvestmentHandler:
                         del movement['venc_date']
                     except:
                         pass
+                    if movement['movement_type'] == 2:
+                        self.add_profit_loss(profit_loss_value, movement, headers)
                     self.remote_repository.update("user_stocks", ["user_id", "investment_id"], user_stock, headers)
                 try:
                     del movement['tx_type']
                 except:
                     pass
-                inserted_movement = self.remote_repository.insert("user_stocks_movements", movement, headers)
-                if movement_type['to_balance'] and movement['movement_type'] == 2:
-                    self.add_profit_loss(profit_loss_value, inserted_movement, headers)
             else:
                 if movement_type['to_balance']:
                     stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
