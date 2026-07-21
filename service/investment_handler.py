@@ -118,6 +118,7 @@ class InvestmentHandler:
                     del movement['tx_type']
                 except:
                     pass
+                self.remote_repository.insert("user_stocks_movements", movement, headers)
             else:
                 if movement_type['to_balance']:
                     stock = {'investment_id': movement['investment_id'], 'quantity': movement['quantity'],
