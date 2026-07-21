@@ -1,10 +1,11 @@
-# Release Notes - v26.30.004
+# Release Notes - v26.30.005
 
 ## 🚀 Features
-*(Nenhuma nova funcionalidade adicionada nesta versão)*
+*(Nenhuma nova funcionalidade nesta versão)*
 
 ## 🐛 Fixes
-* **Payloads de Investimento:** Remoção da chave redundante `user_id` nos payloads do serviço de investimentos (`investment_handler.py`), garantindo a consistência e otimizando a estrutura de dados trafegada.
+* **Investimentos:** Correção na lógica de cálculo de lucro/prejuízo (profit/loss) durante as movimentações de ações.
+  * *Detalhes técnicos:* O ajuste resolveu inconsistências no cálculo de perdas e ganhos. Alteração realizada no módulo `service/investment_handler.py` (Commit `27205e1` - @krlsedu).
 
 ## 🔧 Chore
-* **Infraestrutura/Docker:** Adição do arquivo `.dockerignore` para excluir arquivos desnecessários do contexto de build. Isso melhora o tempo de build, reduz o tamanho final da imagem e evita o vazamento de arquivos sensíveis ou de ambiente local.
+*(Nenhuma tarefa de manutenção nesta versão)*
