@@ -1,14 +1,13 @@
-# Release Notes - v26.30.006
+Release Notes - v26.30.007
+
+Abaixo estão as notas de atualização para a versão v26.30.007. Esta release foca exclusivamente na refatoração e padronização do estilo de código em diversos serviços da aplicação para melhorar a manutenibilidade.
 
 ## 🚀 Features
-* **Investimentos:** Implementada a inserção das movimentações de ações dos usuários no repositório remoto (`service/investment_handler.py`).
+*(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🐛 Fixes
-* *Nenhuma correção de bug nesta versão.*
+*(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* *Nenhuma tarefa de manutenção nesta versão.*
-
----
-**Resumo Técnico:**
-A versão `v26.30.006` traz uma atualização pontual, mas importante, no fluxo de investimentos. A alteração garante que os dados de movimentação de ações (stock movements) sejam devidamente persistidos no repositório remoto, garantindo a consistência dos dados do usuário.
+* **Core/Services:** Padronização do estilo de código e melhoria na clareza (`Múltiplos arquivos`).
+  * *Commit: `60d3369` | Autor: @krlsedu*
