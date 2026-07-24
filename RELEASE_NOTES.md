@@ -1,13 +1,13 @@
-Release Notes - v26.30.008
+Release Notes - v26.30.009
 
-Abaixo estão as notas de atualização para a versão v26.30.008. Esta release foca em melhorias internas e refatoração na lógica de manipulação de investimentos.
+Abaixo estão as notas de atualização para a versão v26.30.009. Esta versão foca na correção de cálculos no módulo de serviços de investimento.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🐛 Fixes
-*(Nenhuma alteração desta categoria nesta versão)*
+* **Investment Handler:** Correção no cálculo incorreto de perdas (`service/investment_handler.py`).
+  * *Commit: `143fa5a` | Autor: @krlsedu*
 
 ## 🔧 Chore
-* **Investment:** Atualização na lógica de manipulação de ID do tipo de investimento (`service/investment_handler.py`).
-  * *Commit: `6b81eff` | Autor: @krlsedu*
+*(Nenhuma alteração desta categoria nesta versão)*
