@@ -1,6 +1,6 @@
-Release Notes - v26.30.007
+Release Notes - v26.30.008
 
-Abaixo estão as notas de atualização para a versão v26.30.007. Esta release foca exclusivamente na refatoração e padronização do estilo de código em diversos serviços da aplicação para melhorar a manutenibilidade.
+Abaixo estão as notas de atualização para a versão v26.30.008. Esta release foca em melhorias internas e refatoração na lógica de manipulação de investimentos.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.30.007. Esta release 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Core/Services:** Padronização do estilo de código e melhoria na clareza (`Múltiplos arquivos`).
-  * *Commit: `60d3369` | Autor: @krlsedu*
+* **Investment:** Atualização na lógica de manipulação de ID do tipo de investimento (`service/investment_handler.py`).
+  * *Commit: `6b81eff` | Autor: @krlsedu*
