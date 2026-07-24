@@ -1034,7 +1034,7 @@ class InvestmentHandler:
             if pl["value"] > 0:
                 infos["resume"]["profits"] += float(pl["value"] * pl["quantity"])
             else:
-                infos["resume"]["losses"] += float(pl["value"] * pl["quantity"])
+                infos["resume"]["losses"] += (float(pl["value"] * pl["quantity"])) * -1
         return infos
 
     def add_total_daily_gain(self, infos, headers=None):
