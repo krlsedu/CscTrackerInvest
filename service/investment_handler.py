@@ -718,7 +718,8 @@ class InvestmentHandler:
                     )
                     if (
                         stock_consolidated["investment_type_id"] == 16
-                        or stock_consolidated["investment_type_id"] == 15
+                        # or stock_consolidated["investment_type_id"] == 15
+                        or investment_type_id_ == 15
                     ) and stock_["investment_type_real_id"] is None:
                         perc_gain = (
                             float(stock_consolidated["price_atu"])
