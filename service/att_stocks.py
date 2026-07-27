@@ -98,10 +98,11 @@ class AttStocks:
                 else:
                     try:
                         stock_["price"] = acao["price"]
-                        stock_["pl"] = acao["p_L"]
-                        stock_["ev_ebit"] = acao["eV_Ebit"]
-                        stock_["avg_liquidity"] = acao["liquidezMediaDiaria"]
+                        stock_["pl"] = acao["p_l"]
+                        stock_["ev_ebit"] = acao["ev_ebit"]
+                        stock_["avg_liquidity"] = acao["liquidezmediadiaria"]
                         stock_["dy"] = acao["dy"]
+                        stock_["pvp"] = acao["p_vp"]
                     except Exception as e:
                         pass
 
@@ -145,13 +146,23 @@ class AttStocks:
         for bdr in bdrs:
             count_ += 1
             try:
-                company_ = bdr["url"]
-                company_ = company_.replace("/bdrs/", "")
+                company_ = bdr["ticker"]
                 self.logger.info(f"Atualizando BDR: {company_} - {count_}/{len(bdrs)}")
                 stock_ = self.investment_handler.get_stock(company_, headers)
                 stock_, _, _ = self.http_repository.get_values_by_ticker(
                     stock_, True, headers
                 )
+
+
+                try:
+                    stock_["price"] = bdr["price"]
+                    stock_["pl"] = bdr["p_l"]
+                    stock_["ev_ebit"] = bdr["ev_ebit"]
+                    stock_["avg_liquidity"] = bdr["liquidezmediadiaria"]
+                    stock_["dy"] = bdr["dy"]
+                    stock_["pvp"] = bdr["p_vp"]
+                except Exception as e:
+                    pass
 
                 stock_ = self.investment_handler.att_dividend_info(stock_, headers)
 
@@ -549,8 +560,7 @@ class AttStocks:
 
     def att_price_generic(self, headers, stock, type, daily=False):
         if type == "bdr":
-            company_ = stock["url"]
-            company_ = company_.replace("/bdrs/", "")
+            company_ = stock["ticker"]
             self.logger.info(f"Atualizando o {type}: {company_}")
             stock_ = self.investment_handler.get_stock(company_, headers)
             stock["price"] = stock_["price"]
