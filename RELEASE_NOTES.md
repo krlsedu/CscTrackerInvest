@@ -1,13 +1,13 @@
-Release Notes - v26.30.009
+Release Notes - v26.31.001
 
-Abaixo estão as notas de atualização para a versão v26.30.009. Esta versão foca na correção de cálculos no módulo de serviços de investimento.
+Abaixo estão as notas de atualização para a versão v26.31.001. Esta release foca na atualização e melhoria dos processos de carregamento de BDRs e no tratamento de atributos de preços de ações.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🐛 Fixes
-* **Investment Handler:** Correção no cálculo incorreto de perdas (`service/investment_handler.py`).
-  * *Commit: `143fa5a` | Autor: @krlsedu*
+*(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-*(Nenhuma alteração desta categoria nesta versão)*
+* **BDR/Stocks:** Atualização no carregamento de BDRs e no tratamento de atributos de preços de ações (`service/att_stocks.py`, `service/load_info.py`, `static/Resumo_novo.sql`).
+  * *Commit: `a91cef4` | Autor: @krlsedu*
