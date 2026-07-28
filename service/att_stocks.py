@@ -649,6 +649,7 @@ class AttStocks:
                         stock_["segment"] = self.get_atributo(stock, "segmentname", stock_["segment"])
                     elif tipo == "fii":
                         stock_["segment"] = self.get_atributo(stock, "segment", stock_["segment"])
+                        stock_["last_dividend"] = self.get_atributo(stock, "lastdividend", stock_["last_dividend"])
 
                     stock_["avg_liquidity"] = self.get_atributo(stock, "liquidezmediadiaria", stock_["avg_liquidity"])
                     stock_["dy"] = self.get_atributo(stock, "dy", stock_["dy"])
