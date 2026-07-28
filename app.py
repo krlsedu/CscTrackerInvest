@@ -378,4 +378,18 @@ def att_full_thr(headers):
     att_stocks.att_full(headers)
 
 
+@app.route("/att-caracteristicas", methods=["POST"])
+def att_caracteristicas():  # put application's code here
+    logging.getLogger().info("att_caracteristicas requested")
+    headers = http_repository.get_headers()
+    args_ = {"headers": headers}
+    SchedulerService.put_in_queue(att_full_thr, args_, priority=True)
+    return "{}", 200, {"Content-Type": "application/json"}
+
+
+def att_caracteristicas_thr(headers):
+    time.sleep(1)
+    att_stocks.att_caracteristicas(headers)
+
+
 starter.start()

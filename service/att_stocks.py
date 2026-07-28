@@ -617,3 +617,47 @@ class AttStocks:
                 )
                 self.logger.exception(e)
         return fiis
+
+    def att_caracteristicas(self, headers):
+        self.att_caracteristicas_acoes(headers, tipo="ação")
+        self.att_caracteristicas_acoes(headers, tipo="bdr")
+        self.att_caracteristicas_acoes(headers, tipo="fii")
+        return
+
+    def att_caracteristicas_acoes(self, headers, tipo="ação"):
+        if tipo == "ação":
+            stocks = self.load_info.load_acoes_info()
+        elif tipo == "bdr":
+            stocks = self.load_info.load_bdr_info()
+        elif tipo == "fii":
+            stocks = self.load_info.load_fiis_info()
+        else:
+            stocks = []
+        count_ = 0
+        for stock in stocks:
+            count_ += 1
+            try:
+                self.logger.info(
+                    f"Atualizando características {tipo}: {stock['ticker']} - {count_}/{len(stocks)}"
+                )
+                stock_ = self.investment_handler.get_stock(stock["ticker"], headers)
+                try:
+                    if tipo in ("ação", "bdr"):
+                        stock_["pl"] = stock["p_l"]
+                        stock_["ev_ebit"] = stock["ev_ebit"]
+                        stock_["segment"] = stock["segmentname"]
+                    elif tipo == "fii":
+                        stock_["segment"] = stock["segment"]
+                        
+                    stock_["avg_liquidity"] = stock["liquidezmediadiaria"]
+                    stock_["dy"] = stock["dy"]
+                    stock_["pvp"] = stock["p_vp"]
+                except Exception as e:
+                    self.logger.warning(f"Erro ao atualizar características {tipo}: {stock['ticker']} - {e}")
+
+                self.remote_repository.update("stocks", "ticker", stock_, headers)
+                self.logger.info(f"{stock_['ticker']} - {stock_['name']} - características atualizadas")
+            except Exception as e:
+                self.logger.error(f"Erro ao atualizar características {tipo}: {stock['ticker']} - {e}")
+                self.logger.exception(e)
+        return stocks
