@@ -1,13 +1,13 @@
-Release Notes - v26.31.002
+Release Notes - v26.31.003
 
-Abaixo estão as notas de atualização para a versão v26.31.002. Esta versão foca na adição de novas capacidades para a gestão e atualização de atributos de estoque na API.
+Abaixo estão as notas de atualização para a versão v26.31.003. Esta versão foca em ajustes internos de infraestrutura e agendamento de tarefas.
 
 ## 🚀 Features
-* **Estoque:** Adicionado endpoint e lógica para atualização de atributos de estoque (`app.py, service/att_stocks.py`).
-  * *Commit: `df2041b` | Autor: @krlsedu*
+*(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🐛 Fixes
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-*(Nenhuma alteração desta categoria nesta versão)*
+* **Agendamento:** Atualização da thread utilizada para o agendamento de `att_caracteristicas` (`app.py`).
+  * *Commit: `8325ded` | Autor: @krlsedu*
