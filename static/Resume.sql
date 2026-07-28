@@ -29,27 +29,32 @@ from (select name,
              (:data_fim::date - :data_ini::date)::numeric                        as real_days,
              case when valor_fim <> 0 then round(days / valor_fim, 0) else 0 end as days,
              case
-                 when ((aportes - dividendos) + valor_ini) <> 0
-                     then (valor_fim / ((aportes - dividendos) + valor_ini)) - 1
+                 when (capital_em_risco + valor_ini) <> 0
+                     then (valor_fim / (capital_em_risco + valor_ini)) - 1
                  else 0
                  end                                                             as valorizacao_real,
-             round((valor_fim - ((aportes - dividendos) + valor_ini)), 2)        as crescimento_real,
-             round(aportes, 2)                                                   as aportes,
-             round(aportes - dividendos, 2)                                      as aportes_real,
-             round((valor_fim - ((aportes) + valor_ini)), 2)                     as crescimento,
+             round((valor_fim - ((aplicacoes - resgates) + valor_ini)), 2)       as crescimento_real,
+             -- total aportado líquido (entradas - saídas, sem misturar dividendos)
+             round(aplicacoes - resgates, 2)                                     as aportes,
+             -- capital em risco: quanto do seu dinheiro ainda está "na mesa"
+             -- negativo = você já recuperou mais do que colocou ? lucro puro
+             round(capital_em_risco, 2)                                          as aportes_real,
+             round((valor_fim - (aplicacoes + valor_ini)), 2)                    as crescimento,
              round(dividendos, 2)                                                as dividendos,
              round(vendas, 2)                                                    as vendas,
              round(aplicacoes, 2)                                                as aplicacoes,
              round(resgates, 2)                                                  as resgates
       from (select name,
-                   sum(quantity_ini * price_ini) as valor_ini,
-                   sum(quantity_fim * price_fim) as valor_fim,
-                   sum(aportes) - sum(resgates)  as aportes,
-                   sum(aportes)                  as aplicacoes,
-                   sum(resgates)                 as resgates,
-                   sum(dividendos)               as dividendos,
-                   sum(vendas)                   as vendas,
-                   sum(days * price_fim)         as days
+                   sum(quantity_ini * price_ini)                   as valor_ini,
+                   sum(quantity_fim * price_fim)                   as valor_fim,
+                   sum(aportes) - sum(resgates)                    as aplicacoes,  -- renomeado internamente para clareza
+                   sum(aportes)                                    as aportes,     -- entradas brutas (mantido para crescimento)
+                   sum(resgates)                                   as resgates,
+                   sum(dividendos)                                 as dividendos,
+                   sum(vendas)                                     as vendas,
+                   sum(days * price_fim)                           as days,
+                   -- capital em risco calculado aqui para reutilizar
+                   (sum(aportes) - sum(resgates)) - sum(dividendos) - sum(vendas) as capital_em_risco
             from (select (select coalesce(
                                          sum(case when movement_type = 1 then quantity else -quantity end),
                                          0)
@@ -105,7 +110,6 @@ from (select name,
                              when :tipo = 'tipo' then it.name
                              when :tipo = 'ativo' then s.ticker
                              else 'Carteira' end                          as name,
-
                          (select coalesce(sum(case
                                                   when movement_type = 1
                                                       then (:data_fim::date - case
