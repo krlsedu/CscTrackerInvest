@@ -1,6 +1,6 @@
-Release Notes - v26.31.008
+Release Notes - v26.31.009
 
-Abaixo estão as notas de atualização para a versão v26.31.008. Esta versão foca em pequenas manutenções e melhorias na documentação interna do banco de dados.
+Abaixo estão as notas de atualização para a versão v26.31.009. Esta versão tem como foco principal a refatoração e melhoria da documentação dos cálculos financeiros do sistema.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.31.008. Esta versão 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Static:** Correção de erros de digitação nos comentários do script (`static/Resume.sql`).
-  * *Commit: `1a96bb3` | Autor: @krlsedu*
+* **Financial:** Refatoração dos cálculos financeiros e melhoria na documentação (`static/Resume.sql`).
+  * *Commit: `737509d` | Autor: @krlsedu*
