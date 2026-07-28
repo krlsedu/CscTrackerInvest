@@ -34,10 +34,10 @@ from (select name,
                  else 0
                  end                                                             as valorizacao_real,
              round((valor_fim - ((aplicacoes - resgates) + valor_ini)), 2)       as crescimento_real,
-             -- total aportado líquido (entradas - saídas, sem misturar dividendos)
+             -- total aportado lÃ­quido (entradas - saÃ­das, sem misturar dividendos)
              round(aplicacoes - resgates, 2)                                     as aportes,
-             -- capital em risco: quanto do seu dinheiro ainda está "na mesa"
-             -- negativo = você já recuperou mais do que colocou ? lucro puro
+             -- capital em risco: quanto do seu dinheiro ainda estÃ¡ "na mesa"
+             -- negativo = vocÃª jÃ¡ recuperou mais do que colocou â†’ lucro puro
              round(capital_em_risco, 2)                                          as aportes_real,
              round((valor_fim - (aplicacoes + valor_ini)), 2)                    as crescimento,
              round(dividendos, 2)                                                as dividendos,
