@@ -28,16 +28,17 @@ from (select name,
              round(valor_fim, 2)                                                 as valor_fim,
              (:data_fim::date - :data_ini::date)::numeric                        as real_days,
              case when valor_fim <> 0 then round(days / valor_fim, 0) else 0 end as days,
+             -- valorizacao_real usa o capital_em_risco como base (conceito correto de rentabilidade)
              case
                  when (capital_em_risco + valor_ini) <> 0
                      then (valor_fim / (capital_em_risco + valor_ini)) - 1
                  else 0
                  end                                                             as valorizacao_real,
-             round((valor_fim - ((aplicacoes - resgates) + valor_ini)), 2)       as crescimento_real,
-             -- total aportado líquido (entradas - saídas, sem misturar dividendos)
-             round(aplicacoes - resgates, 2)                                     as aportes,
-             -- capital em risco: quanto do seu dinheiro ainda está "na mesa"
-             -- negativo = você já recuperou mais do que colocou → lucro puro
+             round((valor_fim - (aportes_liquidos + valor_ini)), 2)              as crescimento_real,
+             -- Total aportado = apenas entradas - saídas no período (SEM descontar dividendos)
+             round(aportes_liquidos, 2)                                          as aportes,
+             -- Capital em risco = total aportado - dividendos recebidos - lucro em vendas
+             -- Negativo = já tirou mais do que colocou → lucro puro
              round(capital_em_risco, 2)                                          as aportes_real,
              round((valor_fim - (aplicacoes + valor_ini)), 2)                    as crescimento,
              round(dividendos, 2)                                                as dividendos,
@@ -45,16 +46,17 @@ from (select name,
              round(aplicacoes, 2)                                                as aplicacoes,
              round(resgates, 2)                                                  as resgates
       from (select name,
-                   sum(quantity_ini * price_ini)                   as valor_ini,
-                   sum(quantity_fim * price_fim)                   as valor_fim,
-                   sum(aportes) - sum(resgates)                    as aplicacoes,  -- renomeado internamente para clareza
-                   sum(aportes)                                    as aportes,     -- entradas brutas (mantido para crescimento)
-                   sum(resgates)                                   as resgates,
-                   sum(dividendos)                                 as dividendos,
-                   sum(vendas)                                     as vendas,
-                   sum(days * price_fim)                           as days,
-                   -- capital em risco calculado aqui para reutilizar
-                   (sum(aportes) - sum(resgates)) - sum(dividendos) - sum(vendas) as capital_em_risco
+                   sum(quantity_ini * price_ini)                                        as valor_ini,
+                   sum(quantity_fim * price_fim)                                        as valor_fim,
+                   sum(aportes)                                                         as aplicacoes,
+                   sum(resgates)                                                        as resgates,
+                   sum(aportes) - sum(resgates)                                        as aportes_liquidos,
+                   sum(dividendos)                                                      as dividendos,
+                   sum(vendas)                                                          as vendas,
+                   sum(days * price_fim)                                                as days,
+                   -- capital_em_risco: base real para calcular rentabilidade
+                   -- desconta o que já "voltou" pro bolso (dividendos + lucro em vendas)
+                   (sum(aportes) - sum(resgates)) - sum(dividendos) - sum(vendas)      as capital_em_risco
             from (select (select coalesce(
                                          sum(case when movement_type = 1 then quantity else -quantity end),
                                          0)
