@@ -1,13 +1,13 @@
-Release Notes - v26.31.001
+Release Notes - v26.31.002
 
-Abaixo estão as notas de atualização para a versão v26.31.001. Esta release foca na atualização e melhoria dos processos de carregamento de BDRs e no tratamento de atributos de preços de ações.
+Abaixo estão as notas de atualização para a versão v26.31.002. Esta versão foca na adição de novas capacidades para a gestão e atualização de atributos de estoque na API.
 
 ## 🚀 Features
-*(Nenhuma alteração desta categoria nesta versão)*
+* **Estoque:** Adicionado endpoint e lógica para atualização de atributos de estoque (`app.py, service/att_stocks.py`).
+  * *Commit: `df2041b` | Autor: @krlsedu*
 
 ## 🐛 Fixes
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **BDR/Stocks:** Atualização no carregamento de BDRs e no tratamento de atributos de preços de ações (`service/att_stocks.py`, `service/load_info.py`, `static/Resumo_novo.sql`).
-  * *Commit: `a91cef4` | Autor: @krlsedu*
+*(Nenhuma alteração desta categoria nesta versão)*
