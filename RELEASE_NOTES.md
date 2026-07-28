@@ -1,6 +1,6 @@
-Release Notes - v26.31.009
+Release Notes - v26.31.010
 
-Abaixo estão as notas de atualização para a versão v26.31.009. Esta versão tem como foco principal a refatoração e melhoria da documentação dos cálculos financeiros do sistema.
+Abaixo estão as notas de atualização para a versão v26.31.010. Esta release foca em ajustes internos e manutenção na lógica de cálculos financeiros.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.31.009. Esta versão 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Financial:** Refatoração dos cálculos financeiros e melhoria na documentação (`static/Resume.sql`).
-  * *Commit: `737509d` | Autor: @krlsedu*
+* **Cálculos Financeiros:** Atualização da lógica de cálculos financeiros (`static/Resume.sql`).
+  * *Commit: `5b5d747` | Autor: @krlsedu*
