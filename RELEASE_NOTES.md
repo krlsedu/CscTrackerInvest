@@ -1,6 +1,6 @@
-Release Notes - v26.31.004
+Release Notes - v26.31.005
 
-Abaixo estão as notas de atualização para a versão v26.31.004. Esta versão foca em melhorias internas e refatoração no serviço de atualização de estoques.
+Abaixo estão as notas de atualização para a versão v26.31.005. Esta versão tem como foco principal a refatoração e melhoria interna no serviço de tratamento de atributos de estoque.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.31.004. Esta versão 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Estoque:** Alteração para o método `insert` nas atualizações de estoque (`service/att_stocks.py`).
-  * *Commit: `15794a9` | Autor: @krlsedu*
+* **Estoque:** Refatoração do tratamento de atributos de estoque com valores padrão de fallback (`service/att_stocks.py`).
+  * *Commit: `4c2421f` | Autor: @krlsedu*
