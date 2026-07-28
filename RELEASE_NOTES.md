@@ -1,6 +1,6 @@
-Release Notes - v26.31.003
+Release Notes - v26.31.004
 
-Abaixo estão as notas de atualização para a versão v26.31.003. Esta versão foca em ajustes internos de infraestrutura e agendamento de tarefas.
+Abaixo estão as notas de atualização para a versão v26.31.004. Esta versão foca em melhorias internas e refatoração no serviço de atualização de estoques.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.31.003. Esta versão 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Agendamento:** Atualização da thread utilizada para o agendamento de `att_caracteristicas` (`app.py`).
-  * *Commit: `8325ded` | Autor: @krlsedu*
+* **Estoque:** Alteração para o método `insert` nas atualizações de estoque (`service/att_stocks.py`).
+  * *Commit: `15794a9` | Autor: @krlsedu*
