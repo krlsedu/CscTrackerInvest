@@ -667,5 +667,6 @@ class AttStocks:
     def get_atributo(self, obj, attr, default=None):
         try:
             return obj[attr]
-        except KeyError:
+        except KeyError as e:
+            self.logger.warning(f"Erro ao obter atributo {attr}: {e}")
             return default
