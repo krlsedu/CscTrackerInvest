@@ -5,6 +5,7 @@ from datetime import datetime
 
 from csctracker_py_core.repository.http_repository import HttpRepository
 from csctracker_py_core.repository.remote_repository import RemoteRepository
+from pip._internal import self_outdated_check
 
 from service.fixed_income import FixedIncome
 from service.investment_handler import InvestmentHandler
@@ -643,15 +644,15 @@ class AttStocks:
                 stock_ = self.investment_handler.get_stock(stock["ticker"], headers)
                 try:
                     if tipo in ("ação", "bdr"):
-                        stock_["pl"] = stock["p_l"]
-                        stock_["ev_ebit"] = stock["ev_ebit"]
-                        stock_["segment"] = stock["segmentname"]
+                        stock_["pl"] = self.get_atributo(stock, "p_l", stock_["pl"])
+                        stock_["ev_ebit"] = self.get_atributo(stock, "ev_ebit", stock_["ev_ebit"])
+                        stock_["segment"] = self.get_atributo(stock, "segmentname", stock_["segment"])
                     elif tipo == "fii":
-                        stock_["segment"] = stock["segment"]
+                        stock_["segment"] = self.get_atributo(stock, "segment", stock_["segment"])
 
-                    stock_["avg_liquidity"] = stock["liquidezmediadiaria"]
-                    stock_["dy"] = stock["dy"]
-                    stock_["pvp"] = stock["p_vp"]
+                    stock_["avg_liquidity"] = self.get_atributo(stock, "liquidezmediadiaria", stock_["avg_liquidity"])
+                    stock_["dy"] = self.get_atributo(stock, "dy", stock_["dy"])
+                    stock_["pvp"] = self.get_atributo(stock, "p_vp", stock_["pvp"])
                 except Exception as e:
                     self.logger.warning(f"Erro ao atualizar características {tipo}: {stock['ticker']} - {e}")
 
@@ -661,3 +662,9 @@ class AttStocks:
                 self.logger.error(f"Erro ao atualizar características {tipo}: {stock['ticker']} - {e}")
                 self.logger.exception(e)
         return stocks
+
+    def get_atributo(self, obj, attr, default=None):
+        try:
+            return obj[attr]
+        except KeyError:
+            return default
