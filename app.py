@@ -383,7 +383,7 @@ def att_caracteristicas():  # put application's code here
     logging.getLogger().info("att_caracteristicas requested")
     headers = http_repository.get_headers()
     args_ = {"headers": headers}
-    SchedulerService.put_in_queue(att_full_thr, args_, priority=True)
+    SchedulerService.put_in_queue(att_caracteristicas_thr, args_, priority=True)
     return "{}", 200, {"Content-Type": "application/json"}
 
 
