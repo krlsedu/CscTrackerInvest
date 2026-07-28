@@ -648,14 +648,14 @@ class AttStocks:
                         stock_["segment"] = stock["segmentname"]
                     elif tipo == "fii":
                         stock_["segment"] = stock["segment"]
-                        
+
                     stock_["avg_liquidity"] = stock["liquidezmediadiaria"]
                     stock_["dy"] = stock["dy"]
                     stock_["pvp"] = stock["p_vp"]
                 except Exception as e:
                     self.logger.warning(f"Erro ao atualizar características {tipo}: {stock['ticker']} - {e}")
 
-                self.remote_repository.update("stocks", "ticker", stock_, headers)
+                self.remote_repository.insert("stocks", stock_, headers)
                 self.logger.info(f"{stock_['ticker']} - {stock_['name']} - características atualizadas")
             except Exception as e:
                 self.logger.error(f"Erro ao atualizar características {tipo}: {stock['ticker']} - {e}")
