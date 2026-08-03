@@ -1,6 +1,6 @@
-Release Notes - v26.32.007
+Release Notes - v26.32.008
 
-Abaixo estão as notas de atualização para a versão v26.32.007. Esta versão foca em ajustes internos e refinamento de consultas SQL para métricas de crescimento.
+Abaixo estão as notas de atualização para a versão v26.32.008. Esta release foca em melhorias internas e refatoração de código para garantir maior consistência no banco de dados.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.32.007. Esta versão 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Resume:** Remoção do escalonamento de porcentagem da métrica `crescimento_percentual_geral` (`static/Resume.sql`).
-  * *Commit: `bdcc70a` | Autor: @krlsedu*
+* **SQL:** Refatoração da formatação da query SQL para consistência (`static/Resume.sql`).
+  * *Commit: `c99f97b` | Autor: @krlsedu*
