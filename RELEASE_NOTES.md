@@ -1,6 +1,6 @@
-Release Notes - v26.31.010
+Release Notes - v26.32.001
 
-Abaixo estão as notas de atualização para a versão v26.31.010. Esta release foca em ajustes internos e manutenção na lógica de cálculos financeiros.
+Abaixo estão as notas de atualização para a versão v26.32.001. Esta versão tem como foco principal a refatoração e otimização da lógica interna dos resumos de investimentos.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.31.010. Esta release 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Cálculos Financeiros:** Atualização da lógica de cálculos financeiros (`static/Resume.sql`).
-  * *Commit: `5b5d747` | Autor: @krlsedu*
+* **Resumo de Investimentos:** Refatoração da lógica SQL e do handler para resumos de investimentos (`service/investment_handler.py`, `static/Resume.sql`).
+  * *Commit: `ca261ba` | Autor: @krlsedu*
