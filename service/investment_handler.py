@@ -2783,7 +2783,10 @@ class InvestmentHandler:
             result_save_["data_fim"] = data_fim_
             results_save_.append(result_save_)
 
-        self.remote_repository.insert("user_resume_values", results_save_, headers)
+        try:
+            self.remote_repository.insert("user_resume_values", results_save_, headers)
+        except Exception as e:
+            self.logger.error("Error inserting user resume values: " + str(e))
 
         # Puxa pelo p_agrupamento, que é o nome que tá no args_ agora
         if args_.get("p_agrupamento") != "carteira":
