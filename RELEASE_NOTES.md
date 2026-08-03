@@ -1,6 +1,6 @@
-Release Notes - v26.32.001
+Release Notes - v26.32.002
 
-Abaixo estão as notas de atualização para a versão v26.32.001. Esta versão tem como foco principal a refatoração e otimização da lógica interna dos resumos de investimentos.
+Abaixo estão as notas de atualização para a versão v26.32.002. Esta versão foca em ajustes internos de banco de dados e melhorias na observabilidade com a adição de logs de erro.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.32.001. Esta versão 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Resumo de Investimentos:** Refatoração da lógica SQL e do handler para resumos de investimentos (`service/investment_handler.py`, `static/Resume.sql`).
-  * *Commit: `ca261ba` | Autor: @krlsedu*
+* **Investments/SQL:** Ajuste de campos SQL e adição de logs de erro (`service/investment_handler.py`, `static/Resume.sql`).
+  * *Commit: `ec9530a` | Autor: @krlsedu*
