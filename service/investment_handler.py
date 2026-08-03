@@ -2788,16 +2788,6 @@ class InvestmentHandler:
         except Exception as e:
             self.logger.error("Error inserting user resume values: " + str(e))
 
-        # Puxa pelo p_agrupamento, que é o nome que tá no args_ agora
-        if args_.get("p_agrupamento") not in ("carteira", 'all'):
-            args_carteira_ = {}
-            args_carteira_["tipo"] = "carteira"
-            args_carteira_["indice"] = "nenhum"
-            args_carteira_["data_fim"] = data_fim_
-            args_carteira_["data_ini"] = data_ini_
-            result_carteira_ = self.get_resume_invest(args_carteira_, headers)
-            result_ = result_ + result_carteira_
-
         # Usa o 'args' original aqui, pra garantir que pega as chaves que vieram do request
         if "sentido" in args:
             reverse_ = args["sentido"] == "desc"

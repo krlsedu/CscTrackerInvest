@@ -1,3 +1,4 @@
+
 with indices as (select s.name                             as name,
                         :data_fim::date - :data_ini::date  as days,
                         1                                  as quantity_ini,
@@ -83,28 +84,28 @@ select name                                                       as name,
        crescimento_percentual_geral / 100                         as crescimento_percentual_geral
 from indices_final
 union all
-select grupo_ativo                                    as name,
-       dias_ponderado_periodo                         as days,
-       crescimento_diario_periodo                     as ganho_diario_medio,
-       crescimento_mensalizado_periodo                as ganho_mensalizado_medio,
-       crescimento_anualizado_periodo                 as ganho_anualizado_medio,
-       crescimento_percentual_patrimonio_perido / 100 as valorizacao_real,
-       valor_inicial                                  as valor_ini,
-       dividendos_periodo                             as dividendos,
-       lucrosperdas_periodo                           as vendas,
-       valor_investido_periodo                        as aportes_real,
-       crescimento_periodo                            as crescimento,
-       valor_final                                    as valor_fim,
-       dias_ponderado                                 as days_geral,
-       impacto_diario_patrimonio                      as impacto_diario_geral,
-       impacto_mensalizado_patrimonio                 as impacto_mensalizado_geral,
-       impacto_anualizado_patrimonio                  as impacto_anualizado_geral,
-       crescimento_geral                              as crescimento_geral,
-       valor_investido_final                          as aportes_final,
-       capital_em_risco_final                         as capital_em_risco_final,
-       dividendos_final                               as dividendos_final,
-       lucrosperdas_final                             as vendas_final,
-       crescimento_percentual_geral / 100             as crescimento_percentual_geral
+select grupo_ativo                          as name,
+       dias_ponderado_periodo               as days,
+       crescimento_diario_periodo           as ganho_diario_medio,
+       crescimento_mensalizado_periodo      as ganho_mensalizado_medio,
+       crescimento_anualizado_periodo       as ganho_anualizado_medio,
+       crescimento_percentual_periodo / 100 as valorizacao_real,
+       valor_inicial                        as valor_ini,
+       dividendos_periodo                   as dividendos,
+       lucrosperdas_periodo                 as vendas,
+       valor_investido_periodo              as aportes_real,
+       crescimento_periodo                  as crescimento,
+       valor_final                          as valor_fim,
+       dias_ponderado                       as days_geral,
+       impacto_diario_patrimonio            as impacto_diario_geral,
+       impacto_mensalizado_patrimonio       as impacto_mensalizado_geral,
+       impacto_anualizado_patrimonio        as impacto_anualizado_geral,
+       crescimento_geral                    as crescimento_geral,
+       valor_investido_final                as aportes_final,
+       capital_em_risco_final               as capital_em_risco_final,
+       dividendos_final                     as dividendos_final,
+       lucrosperdas_final                   as vendas_final,
+       crescimento_percentual_geral / 100   as crescimento_percentual_geral
 from fn_resumo_investimentos_agrupado(
         :data_ini,
         :data_fim,
@@ -114,5 +115,39 @@ from fn_resumo_investimentos_agrupado(
         :p_tipo_investimento,
         :p_segmento,
         :p_grupo_segmento
+     ) as res_agrupado
+where res_agrupado.grupo_ativo <> 'Carteira'
+union
+select grupo_ativo                          as name,
+       dias_ponderado_periodo               as days,
+       crescimento_diario_periodo           as ganho_diario_medio,
+       crescimento_mensalizado_periodo      as ganho_mensalizado_medio,
+       crescimento_anualizado_periodo       as ganho_anualizado_medio,
+       crescimento_percentual_periodo / 100 as valorizacao_real,
+       valor_inicial                        as valor_ini,
+       dividendos_periodo                   as dividendos,
+       lucrosperdas_periodo                 as vendas,
+       valor_investido_periodo              as aportes_real,
+       crescimento_periodo                  as crescimento,
+       valor_final                          as valor_fim,
+       dias_ponderado                       as days_geral,
+       impacto_diario_patrimonio            as impacto_diario_geral,
+       impacto_mensalizado_patrimonio       as impacto_mensalizado_geral,
+       impacto_anualizado_patrimonio        as impacto_anualizado_geral,
+       crescimento_geral                    as crescimento_geral,
+       valor_investido_final                as aportes_final,
+       capital_em_risco_final               as capital_em_risco_final,
+       dividendos_final                     as dividendos_final,
+       lucrosperdas_final                   as vendas_final,
+       crescimento_percentual_geral / 100   as crescimento_percentual_geral
+from fn_resumo_investimentos_agrupado(
+        :data_ini,
+        :data_fim,
+        :p_user_id,
+        'carteira',
+        'all',
+        'all',
+        'all',
+        'all'
      )
-order by impacto_anualizado_geral desc;
+order by ganho_anualizado_medio desc;
