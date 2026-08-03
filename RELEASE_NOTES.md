@@ -1,13 +1,13 @@
-Release Notes - v26.32.004
+Release Notes - v26.32.005
 
-Abaixo estão as notas de atualização para a versão v26.32.004. Esta versão foca em ajustes internos e melhorias na manipulação de parâmetros e cálculos de banco de dados.
+Abaixo estão as notas de atualização para a versão v26.32.005. Esta release foca na correção de referências de campos em scripts SQL.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🐛 Fixes
-*(Nenhuma alteração desta categoria nesta versão)*
+* **SQL:** Correção de referência de campo para `valorizacao_real` (`static/Resume.sql`).
+  * *Commit: `4b3e1d8` | Autor: @krlsedu*
 
 ## 🔧 Chore
-* **Investimentos:** Ajuste no cálculo SQL e manipulação de parâmetros (`service/investment_handler.py`, `static/Resume.sql`).
-  * *Commit: `b046784` | Autor: @krlsedu*
+*(Nenhuma alteração desta categoria nesta versão)*
