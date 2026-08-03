@@ -1,4 +1,3 @@
-
 with indices as (select s.name                             as name,
                         :data_fim::date - :data_ini::date  as days,
                         1                                  as quantity_ini,
@@ -81,7 +80,7 @@ select name                                                       as name,
        0                                                          as capital_em_risco_final,
        0                                                          as dividendos_final,
        0                                                          as vendas_final,
-       crescimento_percentual_geral / 100                         as crescimento_percentual_geral
+       crescimento_percentual_geral                               as crescimento_percentual_geral
 from indices_final
 union all
 select grupo_ativo                          as name,
@@ -105,16 +104,16 @@ select grupo_ativo                          as name,
        capital_em_risco_final               as capital_em_risco_final,
        dividendos_final                     as dividendos_final,
        lucrosperdas_final                   as vendas_final,
-       crescimento_percentual_geral / 100   as crescimento_percentual_geral
+       crescimento_percentual_geral         as crescimento_percentual_geral
 from fn_resumo_investimentos_agrupado(
-        :data_ini,
-        :data_fim,
-        :p_user_id,
-        :p_agrupamento,
-        :p_ticker,
-        :p_tipo_investimento,
-        :p_segmento,
-        :p_grupo_segmento
+             :data_ini,
+             :data_fim,
+             :p_user_id,
+             :p_agrupamento,
+             :p_ticker,
+             :p_tipo_investimento,
+             :p_segmento,
+             :p_grupo_segmento
      ) as res_agrupado
 where res_agrupado.grupo_ativo <> 'Carteira'
 union
@@ -139,7 +138,7 @@ select grupo_ativo                          as name,
        capital_em_risco_final               as capital_em_risco_final,
        dividendos_final                     as dividendos_final,
        lucrosperdas_final                   as vendas_final,
-       crescimento_percentual_geral / 100   as crescimento_percentual_geral
+       crescimento_percentual_geral         as crescimento_percentual_geral
 from fn_resumo_investimentos_agrupado(
         :data_ini,
         :data_fim,
