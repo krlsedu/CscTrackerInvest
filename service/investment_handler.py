@@ -1,6 +1,7 @@
 import decimal
 import json
 import logging
+import this
 from datetime import timedelta, datetime, timezone
 from statistics import stdev, mean
 
@@ -2716,66 +2717,99 @@ class InvestmentHandler:
     def get_resume_invest(self, args, headers):
         select = Utils.read_file("static/Resume.sql")
         args_ = {}
-        for key in args:
-            args_[key] = args[key]
-        # check if exist arg ticker case not exist add text all
-        if "ticker" not in args_:
-            args_["ticker"] = "all"
 
-        if "tipo" not in args_:
-            args_["tipo"] = "all"
+        # Faz o de/para das chaves pro padrão do banco
+        for key in args:
+            if key == 'ticker':
+                args_['p_ticker'] = args[key]
+            elif key == 'invest_name':
+                args_['p_tipo_investimento'] = args[key]
+            elif key == 'segmento':
+                args_['p_segmento'] = args[key]
+            elif key == 'grupo_segmento':
+                args_['p_grupo_segmento'] = args[key]
+            elif key == 'user_id':
+                args_['p_user_id'] = args[key]
+            elif key == 'tipo':
+                args_['p_agrupamento'] = args[key]
+            else:
+                args_[key] = args[key]
+
+        # Agora a gente checa se as chaves NOVAS estão no args_
+        if "p_ticker" not in args_:
+            args_["p_ticker"] = "all"
+
+        if "p_agrupamento" not in args_:
+            args_["p_agrupamento"] = "all"
 
         if "indice" not in args_:
             args_["indice"] = "all"
 
-        if "invest_name" not in args_:
-            args_["invest_name"] = "all"
+        if "p_tipo_investimento" not in args_:
+            args_["p_tipo_investimento"] = "all"
 
-        # if data_inicio not in args_ add data fim as yyyy-MM-dd
+        if "p_segmento" not in args_:
+            args_["p_segmento"] = "all"
+
+        if "p_grupo_segmento" not in args_:
+            args_["p_grupo_segmento"] = "all"
+
+        if "p_user_id" not in args_:
+            args_["p_user_id"] = "1" ## Botei como string pra não quebrar a concatenação
+
+        # Ajuste das datas
         if "data_fim" not in args_:
             now = datetime.now()
             now = now + timedelta(days=1)
             args_["data_fim"] = now.strftime("%Y-%m-%d")
 
-        # if data_ini not in args_ add data ini as 2022-01-01
         if "data_ini" not in args_:
             args_["data_ini"] = "2021-12-01"
+
         data_ini_ = args_["data_ini"]
         args_["data_ini"] = data_ini_ + " 23:59:59.999"
         data_fim_ = args_["data_fim"]
         args_["data_fim"] = data_fim_ + " 23:59:59.999"
+
         for key in args_:
-            select = select.replace(":" + key, "'" + args_[key] + "'")
+            select = select.replace(":" + key, "'" + str(args_[key]) + "'")
+
         result_ = self.remote_repository.execute_select(select, headers)
+
         results_save_ = []
         for res_ in result_:
             result_save_ = res_
             result_save_["data_ini"] = data_ini_
             result_save_["data_fim"] = data_fim_
             results_save_.append(result_save_)
+
         self.remote_repository.insert("user_resume_values", results_save_, headers)
-        if args_["tipo"] != "carteira":
+
+        # Puxa pelo p_agrupamento, que é o nome que tá no args_ agora
+        if args_.get("p_agrupamento") != "carteira":
             args_carteira_ = {}
-            args_carteira_["ticker"] = "all"
             args_carteira_["tipo"] = "carteira"
             args_carteira_["indice"] = "nenhum"
             args_carteira_["data_fim"] = data_fim_
             args_carteira_["data_ini"] = data_ini_
-            args_carteira_["invest_name"] = "all"
             result_carteira_ = self.get_resume_invest(args_carteira_, headers)
             result_ = result_ + result_carteira_
-        if "sentido" in args_:
-            reverse_ = args_["sentido"] == "desc"
+
+        # Usa o 'args' original aqui, pra garantir que pega as chaves que vieram do request
+        if "sentido" in args:
+            reverse_ = args["sentido"] == "desc"
         else:
             reverse_ = True
+
         if "sorted_by" in args:
             result_ = sorted(
-                result_, key=lambda k: k[args_["sorted_by"]], reverse=reverse_
+                result_, key=lambda k: k[args["sorted_by"]], reverse=reverse_
             )
         else:
             result_ = sorted(
                 result_, key=lambda k: k["ganho_mensalizado_medio"], reverse=reverse_
             )
+
         return result_
 
     def load_prices(self, ticker, type, name=None, headers=None, data_=None):
@@ -2797,3 +2831,5 @@ class InvestmentHandler:
                     can_insert = data > data_
                 if can_insert:
                     self.add_stock_price(stock_, headers, data)
+
+
