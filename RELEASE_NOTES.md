@@ -1,6 +1,6 @@
-Release Notes - v26.32.006
+Release Notes - v26.32.007
 
-Abaixo estão as notas de atualização para a versão v26.32.006. Esta versão foca em melhorias internas e refatoração da lógica de banco de dados para resumos de investimentos.
+Abaixo estão as notas de atualização para a versão v26.32.007. Esta versão foca em ajustes internos e refinamento de consultas SQL para métricas de crescimento.
 
 ## 🚀 Features
 *(Nenhuma alteração desta categoria nesta versão)*
@@ -9,5 +9,5 @@ Abaixo estão as notas de atualização para a versão v26.32.006. Esta versão 
 *(Nenhuma alteração desta categoria nesta versão)*
 
 ## 🔧 Chore
-* **Resumos de Investimentos:** Atualização da lógica SQL e remoção de redundâncias (`service/investment_handler.py`, `static/Resume.sql`).
-  * *Commit: `97802a8` | Autor: @krlsedu*
+* **Resume:** Remoção do escalonamento de porcentagem da métrica `crescimento_percentual_geral` (`static/Resume.sql`).
+  * *Commit: `bdcc70a` | Autor: @krlsedu*
