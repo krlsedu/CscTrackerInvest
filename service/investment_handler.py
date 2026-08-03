@@ -2789,7 +2789,7 @@ class InvestmentHandler:
             self.logger.error("Error inserting user resume values: " + str(e))
 
         # Puxa pelo p_agrupamento, que é o nome que tá no args_ agora
-        if args_.get("p_agrupamento") != "carteira":
+        if args_.get("p_agrupamento") not in ("carteira", 'all'):
             args_carteira_ = {}
             args_carteira_["tipo"] = "carteira"
             args_carteira_["indice"] = "nenhum"
